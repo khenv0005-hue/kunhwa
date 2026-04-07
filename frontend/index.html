@@ -10,6 +10,8 @@
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="./css/style.css">
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#3b82f6">
 </head>
 
 <body class="dark-theme">
@@ -98,6 +100,26 @@
                         <i id="chartIcon" class="ri-arrow-up-s-line" style="color: var(--text-sec);"></i>
                     </div>
                     <div id="chartContent" style="margin-top: 15px;">
+                        <!-- 모델 필터링 섹션 (접이식으로 변경) -->
+                        <div style="margin-bottom: 12px;">
+                            <button class="glass-btn" style="width: auto; height: auto; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; display: flex; align-items: center; gap: 6px; background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.2);" onclick="toggleSection('modelFilters', 'modelFilterIcon')">
+                                <i class="ri-filter-3-line"></i> 예측 모델 개별 필터 <i id="modelFilterIcon" class="ri-arrow-down-s-line"></i>
+                            </button>
+                        </div>
+                        <div id="modelFilters" style="display: none; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+                            <label style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #cbd5e1; cursor: pointer; padding: 4px 8px; border-radius: 4px; background: rgba(59,130,246,0.15);">
+                                <input type="checkbox" checked data-model="kma" onchange="toggleModelFilter(this)" style="accent-color: #3b82f6;"> 🇰🇷 한국(KMA)
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #cbd5e1; cursor: pointer; padding: 4px 8px; border-radius: 4px; background: rgba(16,185,129,0.15);">
+                                <input type="checkbox" checked data-model="gfs" onchange="toggleModelFilter(this)" style="accent-color: #10b981;"> 🇺🇸 미국(GFS)
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #cbd5e1; cursor: pointer; padding: 4px 8px; border-radius: 4px; background: rgba(244,63,94,0.15);">
+                                <input type="checkbox" checked data-model="ec" onchange="toggleModelFilter(this)" style="accent-color: #f43f5e;"> 🇪🇺 유럽(ECMWF)
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #cbd5e1; cursor: pointer; padding: 4px 8px; border-radius: 4px; background: rgba(245,158,11,0.15);">
+                                <input type="checkbox" checked data-model="jma" onchange="toggleModelFilter(this)" style="accent-color: #f59e0b;"> 🇯🇵 일본(JMA)
+                            </label>
+                        </div>
                         <div class="chart-container" style="height: 300px; min-height: 300px;"><canvas id="precipChart"></canvas></div>
                     </div>
                 </div>
@@ -107,7 +129,7 @@
                             <h3 style="margin-bottom: 0;">선택 지점 강수 예측 데이터</h3>
                             <i id="tableIcon" class="ri-arrow-up-s-line" style="color: var(--text-sec);"></i>
                         </div>
-                        <select id="dateFilter" class="glass-btn" style="padding: 4px 8px; font-size: 0.8rem; border-radius: 6px; background: rgba(15,23,42,0.6); color: #fff; border: 1px solid rgba(255,255,255,0.2); cursor: pointer; outline: none;">
+                        <select id="dateFilter" style="width: auto; min-width: 100px; padding: 4px 8px; font-size: 0.8rem; border-radius: 6px; background: rgba(15,23,42,0.8); color: #fff; border: 1px solid rgba(255,255,255,0.2); cursor: pointer; outline: none;">
                             <option value="all">전체 (72시간)</option>
                         </select>
                     </div>
@@ -192,6 +214,17 @@
     <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
     <script src="./js/app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').then(reg => {
+                    console.log('App install ready!', reg);
+                }).catch(err => {
+                    console.log('App registration failed', err);
+                });
+            });
+        }
+    </script>
 </body>
 
 </html>
