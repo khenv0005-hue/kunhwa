@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>비점오염 실시간 AI 예측 대시보드</title>
+    <!-- 폰트 적용 -->
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;700;900&display=swap" <!-- 폰트 적용
+        <!-- 폰트 적용 -->
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;700;900&display=swap"
+        rel="stylesheet">
+    <!-- MapLibre GL JS (무료 탑재 가능한 3D 가속 맵 엔진) -->
+    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --panel-bg: rgba(13, 17, 23, 0.85);
+            --border-color: rgba(255, 255, 255, 0.15);
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+            font-family: 'Pretendard', sans-serif;
+        }
+
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-color);
+            color: var(--text-primary);
+            overflow: hidden;
+        }
+
+        #map {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            background: #1e1e1e;
+        }
+
+        .dashboard-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 380px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            box-shadow: var(--glass-shadow);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            padding: 25px;
+            box-sizing: border-box;
+        }
+
+        header h1 {
+            margin: 0 0 5px 0;
+            font-size: 20px;
+            font-weight: 800;
+            background: linear-gradient(90deg, #58a6ff, #3fb950);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        header p {
+            margin: 0 0 20px 0;
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        .control-section {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        h3 {
+            margin: 0 0 15px 0;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toggle-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .toggle-row span {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.1);
+            transition: .3s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+
+        input:checked+.slider {
+            background-color: #3fb950;
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(20px);
+        }
+
+        .btn-action {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(90deg, #2f81f7 0%, #1f6feb 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(47, 129, 247, 0.4);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .btn-action:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(47, 129, 247, 0.6);
+        }
+
+        .btn-action.playing {
+            background: linear-gradient(90deg, #d29922 0%, #b07d12 100%);
+            box-shadow: 0 4px 15px rgba(210, 153, 34, 0.4);
+        }
+
+        .kpi-card {
+            background: linear-gradient(135deg, rgba(35, 134, 54, 0.1) 0%, rgba(255, 255, 255, 0.02) 100%);
+            border: 1px solid rgba(63, 185, 80, 0.3);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            transition: all 0.5s ease;
+        }
+
+        .kpi-card.danger {
+            background: linear-gradient(135deg, rgba(248, 81, 73, 0.15) 0%, rgba(255, 255, 255, 0.02) 100%);
+            border-color: rgba(248, 81, 73, 0.5);
+            animation: pulse-danger 2s infinite;
+        }
+
+        @keyframes pulse-danger {
+            0% {
+                box-shadow: 0 0 0 0 rgba(248, 81, 73, 0.4);
+            }
+
+            70% {
+                box-shadow: 0 0 0 10px rgba(248, 81, 73, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(248, 81, 73, 0);
+            }
+        }
+
+        .kpi-title {
+            color: var(--text-secondary);
+            font-size: 13px;
+            margin-bottom: 5px;
+        }
+
+        .kpi-value {
+            font-size: 28px;
+            font-weight: 900;
+            margin: 0;
+            color: #fff;
+            display: flex;
+            align-items: baseline;
+            gap: 4px;
+        }
+
+        .kpi-unit {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 400;
+        }
+
+        .kpi-status {
+            font-size: 13px;
+            margin-top: 8px;
+            font-weight: 600;
+            color: #3fb950;
+            transition: color 0.3s;
+        }
+
+        .timeline {
+            font-family: monospace;
+            font-size: 12px;
+            color: #8b949e;
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        .radar-status {
+            font-size: 12px;
+            color: #d29922;
+            margin-top: 5px;
+            text-align: center;
+            font-style: italic;
+        }
+
+        .map-legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 15px;
+            z-index: 1000;
+            font-size: 12px;
+            box-shadow: var(--glass-shadow);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .color-box {
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
+        }
+
+        /* 우측 상단 실시간 로그 패널 */
+        .right-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 380px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            box-shadow: var(--glass-shadow);
+            z-index: 1000;
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            height: 480px;
+        }
+
+        .right-panel h3 {
+            margin: 0 0 10px 0;
+            font-size: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 10px;
+        }
+
+        .chart-container {
+            width: 100%;
+            height: 180px;
+            margin-bottom: 15px;
+        }
+
+        .log-container {
+            overflow-y: auto;
+            flex-grow: 1;
+            padding-right: 5px;
+        }
+
+        .log-container::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .log-container::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+
+        .log-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 10px 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            font-size: 13px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .log-item.danger {
+            border-color: rgba(248, 81, 73, 0.4);
+            background: rgba(248, 81, 73, 0.1);
+        }
+
+        .log-item.warning {
+            border-color: rgba(210, 153, 34, 0.4);
+            background: rgba(210, 153, 34, 0.1);
+        }
+
+        .log-time {
+            color: #58a6ff;
+            font-weight: 700;
+            width: 50px;
+        }
+
+        .log-rain {
+            color: #8b949e;
+            width: 70px;
+            text-align: center;
+        }
+
+        .log-ss {
+            color: #fff;
+            font-weight: 700;
+            flex-grow: 1;
+            text-align: right;
+        }
+    </style>
+    <!-- 좌표계 자동 변환(EPSG:5179 등 -> WGS84)을 위한 proj4js 추가 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
+    <!-- Shapefile (.shp/.zip) 파싱을 위한 shpjs 라이브러리 -->
+    <script src="https://unpkg.com/shpjs@latest/dist/shp.js"></script>
+</head>
+
+<body>
+
+    <div id="map"></div>
+    <!-- 전세계 다일/중장기 강우 예측 화면(Windy 무료 Iframe 연동) -->
+    <div id="windyContainer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; display: none; pointer-events: auto;">
+        <iframe id="windyIframe" width="100%" height="100%" frameborder="0"></iframe>
+    </div>
+
+    <div class="dashboard-container">
+        <header>
+            <h1>💧 실시간 AI 비점오염 관제</h1>
+            <p>※ 오픈소스 지도(OSM) 기반 무료 공유 가능 모델<br>(보고/발표 및 타 부서 무료 배포용)</p>
+        </header>
+
+        <div class="control-section">
+            <h3>🎛️ 공간정보 레이어 제어</h3>
+            <div class="toggle-row">
+                <span>🇰🇷 KMA 실황 레이더 (RainViewer API)</span>
+                <label class="switch"><input type="checkbox" id="toggleKmaRadar" checked><span class="slider"></span></label>
+            </div>
+            <div class="toggle-row">
+                <span>🌐 글로벌 단기 예측 레이더 (RainViewer Nowcast)</span>
+                <label class="switch"><input type="checkbox" id="toggleRvForecast"><span class="slider"></span></label>
+            </div>
+            <div class="toggle-row" style="margin-bottom: 5px;">
+                <span style="color:#58a6ff; font-weight: 700;">🌀 글로벌 예보 (Windy 맵)</span>
+                <label class="switch"><input type="checkbox" id="toggleWindy"><span class="slider"></span></label>
+            </div>
+            <a href="#" id="windyExternalLink" target="_blank" style="display:none; color:#58a6ff; font-size:12px; margin-bottom:15px; text-decoration:underline; width:100%; text-align:right;">🔗 새 창에서 전체화면으로 열기 (시간/날짜 직접 선택)</a>
+            <div class="toggle-row">
+                <span>🔲 가상 지적도 (필지 경계 모사)</span>
+                <label class="switch"><input type="checkbox" id="toggleCadastral"><span class="slider"></span></label>
+            </div>
+            <div class="toggle-row" style="margin-bottom: 0;">
+                <span>⚠️ AI 유출 위험도 대상 하천/유역 구역</span>
+                <label class="switch"><input type="checkbox" id="toggleHeatmap" checked><span
+                        class="slider"></span></label>
+            </div>
+        </div>
+
+        <div class="control-section" style="margin-bottom: 20px;">
+            <h3>🗺️ 내 GIS 데이터 얹어보기 (SHP/GeoJSON)</h3>
+            <p style="font-size: 11px; color: #8b949e; margin: 0 0 10px 0; line-height: 1.4;">
+                사업구역(Polygon) 또는 전국 하천망(Line) 파일을 지도 위에 올려보세요.<br>
+                ※ SHP 파일은 관련 속성/좌표 파일(.shp, .shx, .dbf, <b style="color:#58a6ff;">.prj</b>)을
+                하나로 압축(.zip)하여 업로드하세요.<br>
+                <b style="color:#3fb950;">(.prj 파일이 포함되어 있다면 중부원점, UTM-K 등 좌표계 변경 없이 바로 올려도 AI가 자동 변환합니다!)</b>
+            </p>
+            <input type="file" id="gisUpload" accept=".zip, .geojson" style="display: none;">
+            <button class="btn-action"
+                style="background: rgba(255,255,255,0.1); border: 1px dashed rgba(255,255,255,0.3); color: #e6edf3; box-shadow: none;"
+                onclick="document.getElementById('gisUpload').click()">
+                📂 내 PC에서 파일 선택 (.zip / .geojson)
+            </button>
+        </div>
+
+        <div class="control-section" style="margin-bottom: 0;">
+            <h3>📊 실시간 AI 예측 (광교호수/원천저수지)</h3>
+            <div class="kpi-card" id="ssCard">
+                <div class="kpi-title">도심 유역 초기우수 하천 유입 부하량</div>
+                <div class="kpi-value"><span id="ssValue">0</span><span class="kpi-unit">kg/hr</span></div>
+                <div class="kpi-status" id="ssStatus">✅ 현재 강우 없음 (안전)</div>
+            </div>
+            <button class="btn-action" id="playBtn" onclick="toggleRadarPlay()">
+                ▶️ [발표용] 초기우수(First Flush) 시나리오 시연
+            </button>
+            <div class="timeline" id="timeInfo">레이더 데이터 대기 중...</div>
+            <div class="radar-status" id="radarStatus">※ 본 버튼은 강우 초기 오염물질이 집중 유출되는 '초기우수 현상'을 시연하기 위한 임의의 강우(17mm) 가상
+                데이터 모드입니다.</div>
+        </div>
+    </div>
+
+    <div class="right-panel">
+        <h3>⏱️ 가상 시나리오 시간별 강우량 vs 오염유출량 분석</h3>
+        <div class="chart-container"><canvas id="simChart"></canvas></div>
+        <div class="log-container" id="logContainer">
+            <div id="logPlaceholder"
+                style="font-size: 12px; color: #8b949e; text-align: center; margin-top: 20px; line-height: 1.5;">
+                ▶️ 하단의 시연 버튼을 누르면<br>그래프와 시간별 누적 기록이 갱신됩니다.
+            </div>
+        </div>
+    </div>
+
+    <div class="map-legend">
+        <div style="font-weight: 700; margin-bottom: 10px; color: #fff;">지도 범례 설명</div>
+        <div class="legend-item">
+            <div class="color-box" style="background: rgba(255, 235, 59, 0.3); border:1px solid #ffeb3b;"></div> 지적도 (필지
+            경계)
+        </div>
+        <div class="legend-item">
+            <div class="color-box" style="background: rgba(248, 81, 73, 0.6);"></div> 위험 타겟 호수/하천 구역
+        </div>
+        <div class="legend-item">
+            <div class="color-box" style="background: rgba(47, 129, 247, 0.6);"></div> 기상청 레이더 강우 구름
+        </div>
+    </div>
+
+    <!-- 3D 초기 시점 복귀 버튼 -->
+    <button id="resetViewBtn" title="3D 초기 뷰로 돌아가기"
+        style="position: absolute; bottom: 120px; right: 20px; z-index: 1000; background: rgba(13,17,23,0.85); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; color: #e6edf3; padding: 10px 15px; font-size: 13px; font-weight: 700; cursor: pointer; backdrop-filter: blur(10px); box-shadow: 0 4px 15px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 6px; transition: all 0.3s; font-family: 'Pretendard', sans-serif;">
+        🧭 초기 3D 시점으로
+    </button>
+
+    <script>
+        // =========================================================
+        // ★[NEW] MapLibre GL JS 3D 맵 초기화 (무료/오픈소스 완전 독립형)
+        // =========================================================
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: {
+                'version': 8,
+                'sources': {
+                    'carto-dark': {
+                        'type': 'raster',
+                        'tiles': [
+                            'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
+                            'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
+                            'https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png'
+                        ],
+                        'tileSize': 256,
+                        'attribution': '&copy; OpenStreetMap Contributors &copy; CARTO'
+                    }
+                },
+                'layers': [{
+                    'id': 'carto-dark-layer',
+                    'type': 'raster',
+                    'source': 'carto-dark',
+                    'minzoom': 0,
+                    'maxzoom': 22
+                }]
+            },
+            center: [127.065, 37.283], // 광교호수공원 (경도, 위도 순서)
+            zoom: 14.5,
+            pitch: 60, // 3D 느낌을 위한 카메라 기울기
+            bearing: -15, // 좌측으로 약간 회전
+            antialias: true // 3D 안티앨리어싱
+        });
+
+        // 줌/회전 컨트롤 추가
+        map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-right');
+
+        // 홈 버튼(초기 시점 복귀) 이벤트
+        document.getElementById('resetViewBtn').addEventListener('click', () => {
+            map.flyTo({
+                center: [127.065, 37.283],
+                zoom: 14.5,
+                pitch: 60,
+                bearing: -15,
+                duration: 1500 // 1.5초 동안 부드럽게 이동
+            });
+        });
+
+        // =========================================================
+        // GeoJSON 데이터 생성 (지적도, 그리드 등)
+        // =========================================================
+        const gridFeatures = [];
+        const startLatG = 37.260; const startLngG = 127.040;
+        for (let i = 0; i < 30; i++) {
+            for (let j = 0; j < 40; j++) {
+                const lat = startLatG + (i * 0.002); const lng = startLngG + (j * 0.002);
+                gridFeatures.push({ "type": "Feature", "geometry": { "type": "Polygon", "coordinates": [[[lng, lat], [lng + 0.002, lat], [lng + 0.002, lat + 0.002], [lng, lat + 0.002], [lng, lat]]] } });
+            }
+        }
+
+        const cadastralFeatures = [];
+        const startLat = 37.275; const startLng = 127.050;
+        for (let i = 0; i < 30; i++) {
+            for (let j = 0; j < 40; j++) {
+                if ((i > 10 && i < 15) || (j > 20 && j < 25)) continue;
+                if (i > 8 && j < 15) continue;
+                const lat = startLat + (i * 0.0006); const lng = startLng + (j * 0.0008);
+                const r1 = (Math.random() - 0.5) * 0.0002; const r2 = (Math.random() - 0.5) * 0.0002;
+                cadastralFeatures.push({ "type": "Feature", "properties": { "jibun": `원천-${Math.floor(Math.random() * 900) + 100}번지`, "land_type": Math.random() > 0.3 ? "대" : "공", "height": Math.random() * 20 + 5 }, "geometry": { "type": "Polygon", "coordinates": [[[lng, lat], [lng + 0.0007 + r1, lat], [lng + 0.0007 + r2, lat + 0.0005 + r1], [lng, lat + 0.0005], [lng, lat]]] } });
+            }
+        }
+
+        const heatmapPolygon = { "type": "FeatureCollection", "features": [{ "type": "Feature", "geometry": { "type": "Polygon", "coordinates": [[[127.058, 37.278], [127.062, 37.288], [127.070, 37.290], [127.075, 37.280], [127.065, 37.275], [127.058, 37.278]]] } }] };
+
+        // 맵이 로드된 후 3D 지형과 레이어 추가
+        map.on('load', () => {
+            // 2. AI 분석망(Grid) 레이어
+            map.addSource('ai-grid', { 'type': 'geojson', 'data': { type: "FeatureCollection", features: gridFeatures } });
+            map.addLayer({
+                'id': 'ai-grid-fill', 'type': 'fill', 'source': 'ai-grid',
+                'paint': { 'fill-color': '#58a6ff', 'fill-opacity': 0.15, 'fill-outline-color': '#58a6ff' }
+            });
+
+            // 3. 지적도(Cadastral) 레이어 - 3D 건물 입체 표현 (Extrusion)
+            map.addSource('cadastral', { 'type': 'geojson', 'data': { type: "FeatureCollection", features: cadastralFeatures } });
+            map.addLayer({
+                'id': 'cadastral-3d', 'type': 'fill-extrusion', 'source': 'cadastral',
+                'layout': { 'visibility': 'none' }, // 초기에는 숨김
+                'paint': {
+                    'fill-extrusion-color': '#ffeb3b',
+                    'fill-extrusion-height': ['get', 'height'], // GeoJSON 속성에 넣은 높이값 사용
+                    'fill-extrusion-opacity': 0.7
+                }
+            });
+
+            // 4. 위험 구역(Heatmap Polygon) 레이어
+            map.addSource('heatmap', { 'type': 'geojson', 'data': heatmapPolygon });
+            map.addLayer({
+                'id': 'heatmap-fill', 'type': 'fill', 'source': 'heatmap',
+                'paint': { 'fill-color': '#f85149', 'fill-opacity': 0.0 } // 초기 투명
+            });
+            map.addLayer({
+                'id': 'heatmap-line', 'type': 'line', 'source': 'heatmap',
+                'paint': { 'line-color': '#f85149', 'line-width': 0, 'line-dasharray': [2, 2] }
+            });
+
+            // 5. 파티클 애니메이션을 위한 Point 소스
+            map.addSource('particles', { 'type': 'geojson', 'data': { type: 'FeatureCollection', features: [] } });
+            map.addLayer({
+                'id': 'particles-layer', 'type': 'circle', 'source': 'particles',
+                'paint': {
+                    'circle-radius': 4,
+                    'circle-color': ['get', 'color'],
+                    'circle-opacity': 0.9,
+                    'circle-pitch-alignment': 'map' // 지형에 맞춰 눕힘
+                }
+            });
+
+            // 6. 가상 비구름 폴리곤 생성 (Mapbox용)
+            initVirtualClouds();
+
+            // 팝업 설정
+            map.on('click', 'cadastral-3d', (e) => {
+                const props = e.features[0].properties;
+                new maplibregl.Popup().setLngLat(e.lngLat)
+                    .setHTML(`<div style="color:#000;"><b>■ 지적정보</b><hr/>지번: ${props.jibun}<br/>지목: ${props.land_type}</div>`)
+                    .addTo(map);
+            });
+            map.on('mouseenter', 'cadastral-3d', () => { map.getCanvas().style.cursor = 'pointer'; });
+            map.on('mouseleave', 'cadastral-3d', () => { map.getCanvas().style.cursor = ''; });
+
+            // AI 스캐너 동적 마커 추가 (HTML 기반 마커)
+            const el = document.createElement('div');
+            el.className = 'ai-scanner-icon';
+            el.style.width = '40px';
+            el.style.height = '40px';
+            el.innerHTML = `
+                <div style="position:absolute; inset:0; border:2px solid #58a6ff; border-radius:50%; animation:ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
+                <div style="position:absolute; inset:15px; background:#58a6ff; border-radius:50%; box-shadow: 0 0 10px #58a6ff;"></div>
+                <style>@keyframes ping { 75%, 100% { transform: scale(3); opacity: 0; } }</style>
+            `;
+            new maplibregl.Marker({ element: el }).setLngLat([127.066, 37.284]).addTo(map);
+
+            // 실제 RainViewer 레이더 및 예측 데이터 초기화
+            initRainViewerLayers();
+        });
+
+        // =========================================================
+        // ★[NEW] RainViewer 기상 레이더 연속 애니메이션(실제 비구름 이동)
+        // =========================================================
+        let kmaRadarFrames = [];
+        let rvForecastFrames = [];
+        let kmaRadarInterval = null;
+        let rvForecastInterval = null;
+        let currentKmaRadarIdx = 0;
+        let currentRvIdx = 0;
+
+        function initRainViewerLayers() {
+            const apiEndpoint = "https://api.rainviewer.com/public/weather-maps.json";
+            
+            fetch(apiEndpoint)
+                .then(response => response.json())
+                .then(data => {
+                    const host = data.host;
+                    kmaRadarFrames = data.radar.past;
+                    rvForecastFrames = data.radar.nowcast;
+                    
+                    // KMA 레이더 관측 반경 마스크 (Naver 날씨 참조)
+                    map.addSource('radar-coverage', {
+                        'type': 'raster',
+                        'tiles': [`${host}/v2/coverage/0/256/{z}/{x}/{y}/0/0_0.png`],
+                        'tileSize': 256,
+                        'maxzoom': 6,
+                        'bounds': [121.0, 31.0, 132.0, 43.0]
+                    });
+                    map.addLayer({
+                        'id': 'radar-coverage-layer',
+                        'type': 'raster',
+                        'source': 'radar-coverage',
+                        'layout': { 'visibility': 'none' },
+                        'paint': { 'raster-opacity': 0.35 }
+                    });
+                    
+                    // 1. KMA 실황 모든 프레임 로드 (과거 ~ 현재 연속)
+                    kmaRadarFrames.forEach((frame, idx) => {
+                        map.addSource(`kma-radar-${idx}`, {
+                            'type': 'raster',
+                            'tiles': [`${host}${frame.path}/256/{z}/{x}/{y}/4/1_1.png`],
+                            'tileSize': 256,
+                            'maxzoom': 6,
+                            'bounds': [121.0, 31.0, 132.0, 43.0]
+                        });
+                        map.addLayer({
+                            'id': `kma-radar-layer-${idx}`,
+                            'type': 'raster',
+                            'source': `kma-radar-${idx}`,
+                            'layout': { 'visibility': 'none' },
+                            'paint': { 'raster-opacity': 0.85 }
+                        });
+                    });
+
+                    // 2. 글로벌 예측 모든 프레임 로드 (현재 ~ 미래 연속)
+                    if (rvForecastFrames) {
+                        rvForecastFrames.forEach((frame, idx) => {
+                            map.addSource(`rv-forecast-${idx}`, {
+                                'type': 'raster',
+                                'tiles': [`${host}${frame.path}/256/{z}/{x}/{y}/6/1_1.png`],
+                                'tileSize': 256,
+                                'maxzoom': 6,
+                                'bounds': [121.0, 31.0, 132.0, 43.0]
+                            });
+                            
+                            map.addLayer({
+                                'id': `rv-forecast-layer-${idx}`,
+                                'type': 'raster',
+                                'source': `rv-forecast-${idx}`,
+                                'layout': { 'visibility': 'none' },
+                                'paint': { 'raster-opacity': 0.6 }
+                            });
+                        });
+                    }
+                    
+                    // 초기 체크박스 상태 확인 후 자동 재생 시작
+                    if (document.getElementById('toggleKmaRadar').checked) playKmaRadar();
+                    if (document.getElementById('toggleRvForecast').checked) playRvForecast();
+                })
+                .catch(err => console.error("RainViewer API 요청 실패:", err));
+        }
+
+        // KMA 연속 재생 함수
+        function playKmaRadar() {
+            if (kmaRadarFrames.length === 0) return;
+            if (kmaRadarInterval) clearInterval(kmaRadarInterval);
+            
+            kmaRadarInterval = setInterval(() => {
+                if (map.getLayer(`kma-radar-layer-${currentKmaRadarIdx}`)) {
+                    map.setLayoutProperty(`kma-radar-layer-${currentKmaRadarIdx}`, 'visibility', 'none');
+                }
+                
+                currentKmaRadarIdx = (currentKmaRadarIdx + 1) % kmaRadarFrames.length;
+                
+                if (map.getLayer(`kma-radar-layer-${currentKmaRadarIdx}`)) {
+                    map.setLayoutProperty(`kma-radar-layer-${currentKmaRadarIdx}`, 'visibility', 'visible');
+                }
+                if (map.getLayer('radar-coverage-layer')) {
+                    map.setLayoutProperty('radar-coverage-layer', 'visibility', 'visible');
+                }
+                
+                const timeStr = new Date(kmaRadarFrames[currentKmaRadarIdx].time * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                document.getElementById('timeInfo').innerText = `📡 KMA 실황 (계측시간: ${timeStr})`;
+            }, 800); // 0.8초마다 다음 프레임으로 넘기며 비구름 애니메이션
+        }
+
+        function stopKmaRadar() {
+            if (kmaRadarInterval) clearInterval(kmaRadarInterval);
+            kmaRadarFrames.forEach((_, idx) => {
+                if (map.getLayer(`kma-radar-layer-${idx}`)) {
+                    map.setLayoutProperty(`kma-radar-layer-${idx}`, 'visibility', 'none');
+                }
+            });
+            if (map.getLayer('radar-coverage-layer')) {
+                map.setLayoutProperty('radar-coverage-layer', 'visibility', 'none');
+            }
+            document.getElementById('timeInfo').innerText = `레이더 재생 정지됨`;
+        }
+
+        // 글로벌 예측 재생 함수
+        function playRvForecast() {
+            if (rvForecastFrames.length === 0) return;
+            if (rvForecastInterval) clearInterval(rvForecastInterval);
+            
+            rvForecastInterval = setInterval(() => {
+                if (map.getLayer(`rv-forecast-layer-${currentRvIdx}`)) {
+                    map.setLayoutProperty(`rv-forecast-layer-${currentRvIdx}`, 'visibility', 'none');
+                }
+                
+                currentRvIdx = (currentRvIdx + 1) % rvForecastFrames.length;
+                
+                if (map.getLayer(`rv-forecast-layer-${currentRvIdx}`)) {
+                    map.setLayoutProperty(`rv-forecast-layer-${currentRvIdx}`, 'visibility', 'visible');
+                }
+                
+                const timeStr = new Date(rvForecastFrames[currentRvIdx].time * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                document.getElementById('timeInfo').innerText = `🌐 글로벌 단기 예측 (예측시간: ${timeStr})`;
+            }, 800);
+        }
+
+        function stopRvForecast() {
+            if (rvForecastInterval) clearInterval(rvForecastInterval);
+            rvForecastFrames.forEach((_, idx) => {
+                if (map.getLayer(`rv-forecast-layer-${idx}`)) {
+                    map.setLayoutProperty(`rv-forecast-layer-${idx}`, 'visibility', 'none');
+                }
+            });
+            document.getElementById('timeInfo').innerText = `레이더 재생 정지됨`;
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('simChart').getContext('2d');
+            Chart.defaults.color = '#8b949e'; Chart.defaults.font.family = "'Pretendard', sans-serif";
+            simChart = new Chart(ctx, {
+                type: 'bar',
+                data: { labels: [], datasets: [{ type: 'line', label: 'SS 유출(kg)', data: [], borderColor: '#f85149', backgroundColor: '#f85149', borderWidth: 2, tension: 0.3, pointRadius: 3, yAxisID: 'y1' }, { type: 'bar', label: '강우량(mm)', data: [], backgroundColor: 'rgba(47, 129, 247, 0.6)', borderRadius: 2, yAxisID: 'y' }] },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: {
+                        x: { grid: { color: 'rgba(255,255,255,0.05)' } },
+                        y: { position: 'left', title: { display: true, text: '강우(mm)', color: '#8b949e', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true, suggestedMax: 10 },
+                        y1: { position: 'right', title: { display: true, text: 'SS(kg)', color: '#8b949e', font: { size: 10 } }, grid: { display: false }, beginAtZero: true, suggestedMax: 100 }
+                    },
+                    plugins: { legend: { labels: { color: '#e6edf3', boxWidth: 10, font: { size: 11 } } } }
+                }
+            });
+        }
+        initChart();
+
+        document.getElementById('toggleCadastral').addEventListener('change', (e) => {
+            if (!map.getLayer('cadastral-3d')) return;
+            map.setLayoutProperty('cadastral-3d', 'visibility', e.target.checked ? 'visible' : 'none');
+        });
+        document.getElementById('toggleKmaRadar').addEventListener('change', (e) => {
+            if (e.target.checked) {
+                playKmaRadar();
+            }
+            else {
+                stopKmaRadar();
+            }
+        });
+        document.getElementById('toggleRvForecast').addEventListener('change', (e) => {
+            if (e.target.checked) {
+                playRvForecast();
+            }
+            else {
+                stopRvForecast();
+            }
+        });
+        document.getElementById('toggleWindy').addEventListener('change', (e) => {
+            const container = document.getElementById('windyContainer');
+            const iframe = document.getElementById('windyIframe');
+            const extLink = document.getElementById('windyExternalLink');
+            if (e.target.checked) {
+                // 현재 Mapbox의 중심 좌표와 줌을 가져와서 Windy에 동기화
+                const center = map.getCenter();
+                let z = Math.floor(map.getZoom());
+                if (z > 11) z = 11; // Windy iframe은 줌 인 너무 깊으면 깨질 수 있으므로 적정 수준 제한
+                const embedUrl = `https://embed.windy.com/embed2.html?lat=${center.lat}&lon=${center.lng}&detailLat=${center.lat}&detailLon=${center.lng}&zoom=${z}&level=surface&overlay=rain&product=ecmwf&menu=&message=&marker=&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=m%2Fs&metricTemp=%C2%B0C&radarRange=-1`;
+                iframe.src = embedUrl;
+                container.style.display = 'block';
+                extLink.style.display = 'inline-block';
+                extLink.href = `https://www.windy.com/?${center.lat},${center.lng},${z}`;
+                document.getElementById('timeInfo').innerText = `🌐 전세계 10일 글로벌 비구름 예보 모드 (Windy)`;
+            } else {
+                container.style.display = 'none';
+                extLink.style.display = 'none';
+                iframe.src = '';
+                document.getElementById('timeInfo').innerText = `레이더 재생 정지됨`;
+            }
+        });
+        document.getElementById('toggleHeatmap').addEventListener('change', (e) => {
+            if (!map.getLayer('heatmap-fill')) return;
+            if (!e.target.checked) {
+                setRiskOpacity(0); map.setPaintProperty('ai-grid-fill', 'fill-opacity', 0);
+            } else {
+                calculatePollutionAI(); map.setPaintProperty('ai-grid-fill', 'fill-opacity', 0.15);
+            }
+        });
+
+        // =========================================================
+        // ★ 파티클 애니메이션 (Mapbox GeoJSON 모음)
+        // =========================================================
+        let particleInterval; let particleAnimFrame; let activeParticles = [];
+        function startParticleFlow(intensity) {
+            if (particleInterval) clearInterval(particleInterval);
+            if (particleAnimFrame) cancelAnimationFrame(particleAnimFrame);
+            if (intensity < 1) return stopParticleFlow();
+
+            const sourcePoints = [[37.279, 127.054], [37.284, 127.058], [37.287, 127.055], [37.275, 127.070], [37.283, 127.072]];
+            const targetPoint = [37.284, 127.066];
+            let color = intensity > 40 ? '#f85149' : (intensity > 15 ? '#d29922' : '#8b8555');
+
+            particleInterval = setInterval(() => {
+                let createCount = Math.min(Math.floor(intensity / 3) + 1, 15); // 파티클 개수 증가
+                for (let i = 0; i < createCount; i++) {
+                    const sp = sourcePoints[Math.floor(Math.random() * sourcePoints.length)];
+                    const startLatP = sp[0] + (Math.random() - 0.5) * 0.004; const startLngP = sp[1] + (Math.random() - 0.5) * 0.005;
+                    const speed = 0.01 + Math.random() * 0.015;
+                    activeParticles.push({ lat: startLatP, lng: startLngP, startLat: startLatP, startLng: startLngP, progress: 0, speed: speed, color: color });
+                }
+            }, 200);
+
+            // Mapbox에서는 layer 개별 생성 대신 전체 포인트 좌표를 갱신
+            function animateParticles() {
+                let currentFeatures = [];
+                for (let i = activeParticles.length - 1; i >= 0; i--) {
+                    let p = activeParticles[i];
+                    p.progress += p.speed;
+                    if (p.progress >= 1) {
+                        activeParticles.splice(i, 1); continue;
+                    }
+                    p.lat = p.startLat + (targetPoint[0] - p.startLat) * p.progress;
+                    // 지형 굴곡을 타고 흐르는 듯한 S자 곡선 효과
+                    p.lng = p.startLng + (targetPoint[1] - p.startLng) * p.progress + Math.sin(p.progress * Math.PI * 3) * 0.0008;
+                    currentFeatures.push({ "type": "Feature", "properties": { "color": p.color }, "geometry": { "type": "Point", "coordinates": [p.lng, p.lat] } });
+                }
+
+                if (map.getSource('particles')) {
+                    map.getSource('particles').setData({ type: "FeatureCollection", features: currentFeatures });
+                }
+                particleAnimFrame = requestAnimationFrame(animateParticles);
+            }
+            animateParticles();
+        }
+
+        function stopParticleFlow() {
+            if (particleInterval) clearInterval(particleInterval);
+            if (particleAnimFrame) cancelAnimationFrame(particleAnimFrame);
+            activeParticles = [];
+            if (map.getSource('particles')) map.getSource('particles').setData({ type: "FeatureCollection", features: [] });
+        }
+
+        let simHourCounter = 0;
+        let radarInterval; let isSimulating = false; let currentRFrame = 0;
+
+        function toggleRadarPlay() {
+            const btn = document.getElementById('playBtn');
+            if (isSimulating) {
+                clearInterval(radarInterval);
+                btn.innerHTML = '▶️ [발표용] 초기우수(First Flush) 시나리오 시연';
+                btn.classList.remove('playing');
+                isSimulating = false;
+                stopParticleFlow();
+            } else {
+                btn.innerHTML = '⏸️ 시뮬레이션 일시정지';
+                btn.classList.add('playing');
+                isSimulating = true;
+                simHourCounter = 0; currentRFrame = 0;
+
+                const logCont = document.getElementById('logContainer');
+                logCont.innerHTML = '<div id="logPlaceholder" style="font-size: 11px; color: #8b949e; text-align: center; margin-top: 20px;">오염부하량 예측 계산 중...</div>';
+                simChart.data.labels = []; simChart.data.datasets[0].data = []; simChart.data.datasets[1].data = []; simChart.update();
+
+                radarInterval = setInterval(() => {
+                    currentRFrame++;
+                    calculatePollutionAI();
+                    if (currentRFrame > 14) toggleRadarPlay(); // 시나리오 종료
+                }, 1200);
+            }
+        }
+
+        function calculatePollutionAI() {
+            // [초기우수 효과 반영 시나리오]
+            // 비가 계속 오더라도 처음에 쌓여있던 오염물이 다 씻겨나가면 이후에는 오염 유출량이 줄어든다 (First flush)
+            const rainCurve = [0, 0, 1, 3, 5, 8, 4, 3, 3, 2, 2, 0, 0, 0];
+            const ssCurve = [0, 0, 100, 800, 2500, 4800, 1500, 300, 100, 50, 20, 0, 0, 0]; // 강수와 다르게 피크가 빨리 치고 내려옴
+
+            const currentRain = rainCurve[currentRFrame] || 0;
+            const predictedSS = ssCurve[currentRFrame] || 0;
+
+            animateValue("ssValue", parseFloat(document.getElementById("ssValue").innerText.replace(/,/g, '')), predictedSS, 400);
+
+            const card = document.getElementById('ssCard');
+            const status = document.getElementById('ssStatus');
+            const mapToggle = document.getElementById('toggleHeatmap').checked;
+
+            if (predictedSS > 4000) {
+                card.classList.add("danger");
+                status.innerText = "🚨 위험: 고농도 초기우수 유출 경보!"; status.style.color = "#f85149";
+                if (mapToggle) { setRiskOpacity(0.5, '#f85149'); startParticleFlow(80); }
+            } else if (predictedSS > 500) {
+                card.classList.remove("danger");
+                status.innerText = "⚠️ 주의: 오염물질 빠른 속도로 유출 중"; status.style.color = "#d29922";
+                if (mapToggle) { setRiskOpacity(0.25, '#d29922'); startParticleFlow(40); }
+            } else if (predictedSS > 10) {
+                card.classList.remove("danger");
+                status.innerText = "ℹ️ 알림: 잔여 오염물 약간 침출 (초기우수 종료)"; status.style.color = "#58a6ff";
+                if (mapToggle) { setRiskOpacity(0.1, '#58a6ff'); startParticleFlow(10); } // 빗물 수준으로 옅어짐
+            } else {
+                card.classList.remove("danger");
+                status.innerText = "✅ 안전: 강우 종료 또는 빗물만 유입 (오염물 감소)"; status.style.color = "#3fb950";
+                if (mapToggle) setRiskOpacity(0.0, '#3fb950'); stopParticleFlow();
+            }
+
+            if (map.getLayer('ai-grid-fill')) {
+                map.setPaintProperty('ai-grid-fill', 'fill-opacity', mapToggle ? (0.15 + currentRain * 0.01) : 0);
+            }
+
+            if (isSimulating && mapToggle) {
+                simHourCounter++;
+                const logCont = document.getElementById('logContainer');
+                const placeholder = document.getElementById('logPlaceholder');
+                if (placeholder) placeholder.remove();
+
+                let logClass = '';
+                if (predictedSS > 4000) logClass = 'danger';
+                else if (predictedSS > 500) logClass = 'warning';
+
+                const logHTML = `<div class="log-item ${logClass}"><div class="log-time">T+${simHourCounter}h</div><div class="log-rain">🌧️ ${currentRain.toFixed(1)}mm</div><div class="log-ss">💧 ${predictedSS.toLocaleString('ko-KR')} kg</div></div>`;
+                logCont.insertAdjacentHTML('beforeend', logHTML);
+                logCont.scrollTop = logCont.scrollHeight;
+
+                simChart.data.labels.push(`+${simHourCounter}h`); simChart.data.datasets[1].data.push(currentRain); simChart.data.datasets[0].data.push(predictedSS); simChart.update();
+            }
+        }
+
+        function setRiskOpacity(opacity, color = '#f85149') {
+            if (!map.getLayer('heatmap-fill')) return;
+            map.setPaintProperty('heatmap-fill', 'fill-opacity', opacity);
+            map.setPaintProperty('heatmap-line', 'line-width', opacity > 0 ? 3 : 0);
+            map.setPaintProperty('heatmap-fill', 'fill-color', color);
+            map.setPaintProperty('heatmap-line', 'line-color', color);
+        }
+
+        function animateValue(id, start, end, duration) {
+            const obj = document.getElementById(id); let startT = null;
+            const step = (timestamp) => {
+                if (!startT) startT = timestamp; const progress = Math.min((timestamp - startT) / duration, 1);
+                const current = start + progress * (end - start);
+                obj.innerHTML = current.toFixed(1).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+                if (progress < 1) window.requestAnimationFrame(step);
+            };
+            window.requestAnimationFrame(step);
+        }
+
+        // =========================================================
+        // ★[NEW] 사용자 GIS(SHP/GeoJSON) 파일 로컬 업로드 및 시각화 로직 (Mapbox 버전)
+        // =========================================================
+        let customLayerCount = 0; // 여러 개 올릴 수 있도록 ID 분리
+
+        document.getElementById('gisUpload').addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                const buffer = event.target.result;
+
+                // 확장자에 따른 파싱
+                if (file.name.toLowerCase().endsWith('.zip')) {
+                    // shpjs 라이브러리로 압축된 SHP 파일 파싱
+                    shp(buffer).then(function (geojson) {
+                        addCustomMapboxLayer(geojson);
+                        alert("✅ SHP 파일 로드가 완료되었습니다! (속성 정보를 보려면 지도 위 도형을 클릭하세요)");
+                    }).catch(function (err) {
+                        console.error(err);
+                        alert("❌ SHP 파일 파싱 에러\\n.prj(좌표계) 파일이 누락되었거나 형식이 잘못된 압축 파일(zip)입니다.");
+                    });
+                } else if (file.name.toLowerCase().endsWith('.geojson')) {
+                    // GeoJSON 파싱
+                    const textDecoder = new TextDecoder('utf-8');
+                    const jsonString = textDecoder.decode(buffer);
+                    try {
+                        const geojson = JSON.parse(jsonString);
+                        addCustomMapboxLayer(geojson);
+                        alert("✅ GeoJSON 파일 로드가 완료되었습니다!");
+                    } catch (err) {
+                        console.error(err);
+                        alert("❌ GeoJSON 파싱 에러");
+                    }
+                }
+            };
+            // 같은 파일을 다시 올릴 수 있도록 초기화
+            e.target.value = '';
+            reader.readAsArrayBuffer(file);
+        });
+
+        // Mapbox 형식에 맞춰 파싱된 GeoJSON을 레이어로 등록하고 클릭 팝업 달기
+        function addCustomMapboxLayer(geojson) {
+            customLayerCount++;
+            const sourceId = 'custom-source-' + customLayerCount;
+            const fillLayerId = 'custom-layer-fill-' + customLayerCount;
+            const lineLayerId = 'custom-layer-line-' + customLayerCount;
+
+            map.addSource(sourceId, { 'type': 'geojson', 'data': geojson });
+
+            // 면(Polygon/MultiPolygon)인 경우 배경을 연하게 그림
+            map.addLayer({
+                'id': fillLayerId, 'type': 'fill', 'source': sourceId,
+                'paint': { 'fill-color': '#00bfff', 'fill-opacity': 0.1 },
+                'filter': ['==', '$type', 'Polygon']
+            });
+
+            // 선(LineString) 또는 폴리곤 테두리 그리기 -> 사용자가 '하천'을 언급했으므로 기본 색상을 하늘색(#00bfff)으로 설정
+            map.addLayer({
+                'id': lineLayerId, 'type': 'line', 'source': sourceId,
+                'paint': { 'line-color': '#00bfff', 'line-width': 3, 'line-dasharray': [2, 2] },
+                'filter': ['in', '$type', 'Polygon', 'LineString']
+            });
+
+            // 클릭 시 속성 팝업 띄우기
+            const layerIds = [fillLayerId, lineLayerId];
+            layerIds.forEach(id => {
+                map.on('click', id, (e) => {
+                    const props = e.features[0].properties;
+                    let popupHtml = "<b>■ 사용자 업로드 GIS 객체</b><br/><hr style='margin:5px 0; border:1px solid #484f58;'/>";
+                    for (const key in props) {
+                        popupHtml += `<span style="font-size:11px;"><b>${key}</b>: ${props[key]}</span><br/>`;
+                    }
+                    new maplibregl.Popup({ maxWidth: '300px' }).setLngLat(e.lngLat).setHTML(`<div style="color:#000;">${popupHtml}</div>`).addTo(map);
+                });
+                map.on('mouseenter', id, () => { map.getCanvas().style.cursor = 'pointer'; });
+                map.on('mouseleave', id, () => { map.getCanvas().style.cursor = ''; });
+            });
+
+            // 데이터가 있는 위치로 카메라 부드럽게 이동 (Bounds 계산)
+            try {
+                const bounds = new maplibregl.LngLatBounds();
+                geojson.features.forEach(function (f) {
+                    if (f.geometry.type === 'Point') {
+                        bounds.extend(f.geometry.coordinates);
+                    } else if (f.geometry.type === 'LineString' || f.geometry.type === 'MultiPoint') {
+                        f.geometry.coordinates.forEach(c => bounds.extend(c));
+                    } else if (f.geometry.type === 'Polygon' || f.geometry.type === 'MultiLineString') {
+                        f.geometry.coordinates[0].forEach(c => bounds.extend(c));
+                    }
+                });
+                map.fitBounds(bounds, { padding: 50, maxZoom: 15, duration: 2000 });
+            } catch (e) { console.warn("Bounds 계산 실패", e); }
+        }
+    </script>
+</body>
+
+</html>
