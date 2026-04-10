@@ -104,3 +104,10 @@ h3 { font-size: 0.95rem; font-weight: 500; color: var(--text-sec); margin-bottom
 .leaflet-popup-content-wrapper { background: var(--panel-bg); color: #fff; backdrop-filter: blur(10px); border: 1px solid var(--panel-border); }
 .leaflet-popup-tip { background: var(--panel-bg); }
 .leaflet-popup-content { margin: 12px; font-family: var(--font-main); }
+.site-link { display: flex; align-items: center; gap: 8px; padding: 10px; background: rgba(59,130,246,0.06); border: 1px solid rgba(255,255,255,0.05); border-radius: 6px; font-size: 0.8rem; color: #cbd5e1; text-decoration: none; transition: 0.2s; }
+.site-link:hover { background: rgba(59,130,246,0.15); border-color: rgba(59,130,246,0.4); color: #fff; transform: translateX(4px); }
+.site-link i { color: #3b82f6; width: 14px; text-align: center; }
+
+/* 지도 타일 특수 필터 (가독성 보정) */
+.vworld-2d-filter { filter: brightness(0.9) contrast(1.1); }
+.vworld-sat-filter { filter: brightness(0.75) contrast(1.25) saturate(1.2); }

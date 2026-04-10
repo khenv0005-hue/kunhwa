@@ -31,8 +31,18 @@
                 </div>
             </div>
             <div class="current-location" style="display: flex; align-items: center; gap: 15px;">
+                <div style="position: relative; display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.2); padding: 4px 12px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);">
+                    <i class="ri-search-line" style="color: #94a3b8;"></i>
+                    <input type="text" id="addressSearch" placeholder="장소, 주소 검색 (예: 한강대교)" 
+                        style="background: transparent; border: none; color: #fff; outline: none; font-size: 0.85rem; width: 180px;"
+                        onkeypress="if(event.key === 'Enter') searchLocation()" onclick="showSearchHistory()" autocomplete="off">
+                    <button onclick="searchLocation()" style="background: none; border: none; color: #3b82f6; cursor: pointer; padding: 0 4px;"><i class="ri-arrow-right-line"></i></button>
+                    <!-- 검색 결과 드롭다운 표시기 -->
+                    <div id="searchResultsDropdown" style="display: none; position: absolute; top: 100%; left: 0; min-width: 320px; margin-top: 8px; background: rgba(15,23,42,0.95); border: 1px solid rgba(59,130,246,0.4); border-radius: 8px; max-height: 250px; overflow-y: auto; z-index: 9999; flex-direction: column; box-shadow: 0 10px 25px rgba(0,0,0,0.5); backdrop-filter: blur(10px);">
+                    </div>
+                </div>
                 <div style="display: flex; align-items: center; gap: 8px;">
-                    <i class="ri-map-pin-user-line"></i><span id="currentLocText">서울특별시 한강 유역 (지점 선택 대기)</span>
+                    <i class="ri-map-pin-user-line"></i><span id="currentLocText" style="font-size: 0.85rem; color: #cbd5e1;">서울특별시 한강 유역</span>
                 </div>
                 <button id="updateBtn" class="search-btn" style="background: var(--success); display: flex; align-items: center; gap: 6px; padding: 8px 16px; font-size: 0.85rem;" onclick="manualUpdate()">
                     <i class="ri-refresh-line"></i> 데이터 갱신
@@ -56,10 +66,16 @@
                         <div style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 8px;">배경 지도</div>
                         <div style="display: flex; flex-direction: column; gap: 8px;">
                             <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #cbd5e1; cursor: pointer;">
-                                <input type="radio" name="baseMap" value="cartodark" checked onchange="changeBaseMap(this.value)" style="accent-color: #3b82f6;"> 🌌 CARTO 다크
+                                <input type="radio" name="baseMap" value="vworld" checked onchange="changeBaseMap(this.value)" style="accent-color: #3b82f6;"> 🗾 브이월드 2D
                             </label>
                             <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #cbd5e1; cursor: pointer;">
-                                <input type="radio" name="baseMap" value="satellite" onchange="changeBaseMap(this.value)" style="accent-color: #3b82f6;"> 🛰️ Esri 위성
+                                <input type="radio" name="baseMap" value="vworld_sat" onchange="changeBaseMap(this.value)" style="accent-color: #3b82f6;"> 🛰️ 브이월드 위성
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #cbd5e1; cursor: pointer;">
+                                <input type="radio" name="baseMap" value="topo" onchange="changeBaseMap(this.value)" style="accent-color: #3b82f6;"> ⛰️ 지형도 (Esri Topo)
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #cbd5e1; cursor: pointer;">
+                                <input type="radio" name="baseMap" value="cartodark" onchange="changeBaseMap(this.value)" style="accent-color: #3b82f6;"> 🌌 CARTO 다크
                             </label>
                             <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #cbd5e1; cursor: pointer;">
                                 <input type="radio" name="baseMap" value="osm" onchange="changeBaseMap(this.value)" style="accent-color: #3b82f6;"> 🗺️ OpenStreetMap
@@ -151,6 +167,12 @@
         </aside>
 
         <aside class="right-panel glass-panel fade-in-right">
+            <div style="padding: 8px 20px 0; text-align: right;">
+                <a href="https://www.water.or.kr/gis/gis/index.do?menuId=92&lang=ko" target="_blank" 
+                   style="font-size: 0.7rem; color: #60a5fa; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; opacity: 0.8;">
+                    <i class="ri-map-2-line"></i> 물정보포털(GIS) 바로가기
+                </a>
+            </div>
             <div class="panel-header">
                 <h2><i class="ri-alarm-warning-line"></i> 강우시 모니터링 출장 의사결정</h2>
             </div>
@@ -179,13 +201,37 @@
                     </div>
                     <ul id="guideContent"
                         style="padding-left: 20px; font-size: 0.8rem; margin-top: 10px; color: #cbd5e1; list-style-type: none; display: none;">
-                        <li style="margin-bottom: 4px;">🔴 <strong>즉시 대응</strong>: [1~3시간] 내 <strong>강수량 30mm 이상</strong> 또는 <strong>확률 85% 이상</strong></li>
-                        <li style="margin-bottom: 4px;">🟠 <strong>대응 준비</strong>: [3~6시간] 내 <strong>강수량 20mm 이상</strong> 또는 <strong>확률 70% 이상</strong></li>
-                        <li style="margin-bottom: 4px;">🟡 <strong>예의주시</strong>: [6~12시간] 내 <strong>강수량 10mm 이상</strong> 또는 <strong>확률 50% 이상</strong></li>
-                        <li style="margin-bottom: 4px;">🔵 <strong>사전 계획</strong>: [12~24시간] 내 <strong>강수량 10mm 이상</strong> 또는 <strong>확률 50% 이상</strong></li>
-                        <li style="margin-bottom: 4px;">🟣 <strong>장기 검토</strong>: [24~72시간] 내 <strong>강수량 10mm 이상</strong> 또는 <strong>확률 50% 이상</strong></li>
-                        <li>⚪ <strong>미대응</strong>: 모든 시간창에서 위 기준 미달 시</li>
+                        <li style="margin-bottom: 4px;">⏰ <strong>시간창 구간</strong>: 1~6h, 6~12h, 12~24h, 24~72h</li>
+                        <li style="margin-bottom: 4px;">🔴 <strong>즉시 대응</strong>: 강수 확률 80% 이상 (현장 셋팅/준비)</li>
+                        <li style="margin-bottom: 4px;">🟠 <strong>대응 준비</strong>: 강수 확률 60% 이상 (실시간 모니터링 및 이동)</li>
+                        <li style="margin-bottom: 4px;">🟡 <strong>예의 주시</strong>: 강수 확률 50% 이상 (상태 집중 판단)</li>
+                        <li style="margin-bottom: 4px;">🔘 <strong>미대응</strong>: 강수 확률 50% 미만 (평시 모니터링 유지)</li>
+                        <li style="margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); color: #60a5fa;">
+                            💡 최종 출동 의사결정은 <strong>[24~72시간]</strong> 구간의 예측값을 기준으로 판단합니다.
+                        </li>
                     </ul>
+                </div>
+
+                <div class="card" style="padding: 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; margin-bottom: 12px;" onclick="toggleSection('linkContent', 'linkIcon')">
+                        <h3 style="margin-bottom: 0;"><i class="ri-search-eye-line"></i> 연관 모니터링 사이트</h3>
+                        <i id="linkIcon" class="ri-arrow-up-s-line" style="color: var(--text-sec);"></i>
+                    </div>
+                    <div id="linkContent">
+                        <div style="position: relative; margin-bottom: 10px;">
+                            <i class="ri-search-line" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 0.8rem;"></i>
+                            <input type="text" id="siteSearchInput" placeholder="사이트명 검색(필터)..." 
+                                style="width: 100%; padding: 6px 10px 6px 30px; border-radius: 6px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 0.8rem; outline: none;">
+                        </div>
+                        <div id="siteList" style="display: flex; flex-direction: column; gap: 6px; max-height: 200px; overflow-y: auto;">
+                            <!-- 기상/수위/수질 연관 사이트 -->
+                            <a href="https://www.weather.go.kr" target="_blank" class="site-link" data-name="기상청 기상정보 초단기예보"><i class="ri-cloud-windy-line"></i> 기상청 기상레이더 (실시간)</a>
+                            <a href="http://www.hrfco.go.kr" target="_blank" class="site-link" data-name="한강홍수통제소 수위관측소"><i class="ri-temp-cold-line"></i> 한강홍수통제소 (수위/강수)</a>
+                            <a href="http://water.nier.go.kr" target="_blank" class="site-link" data-name="물환경정보시스템 수질측정망"><i class="ri-database-2-line"></i> 물환경정보시스템 (수질자료)</a>
+                            <a href="https://map.naver.com" target="_blank" class="site-link" data-name="네이버 지도 상세위치"><i class="ri-map-pin-line"></i> 네이버 지도 (좌표 확인용)</a>
+                            <a href="https://map.kakao.com" target="_blank" class="site-link" data-name="카카오 맵 상세위치"><i class="ri-chat-1-line"></i> 카카오 맵 (지적편집도 보기)</a>
+                        </div>
+                    </div>
                 </div>
 
             </div>

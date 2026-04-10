@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>비점오염 통합 예측 시스템 - 하천 수질 모니터링 대시보드</title>
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+    <link rel="stylesheet" href="./css/style.css">
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#3b82f6">
+</head>
+
+<body class="dark-theme">
+    <div class="dash-layout">
+        <div id="map" class="map-bg"></div>
+        <div id="windyContainer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 50; display: none; pointer-events: auto;">
+            <iframe id="windyIframe" width="100%" height="100%" frameborder="0"></iframe>
+        </div>
+        <div id="radarTimeInfo" class="glass-panel" style="position: absolute; bottom: 180px; left: 50%; transform: translateX(-50%); z-index: 1000; padding: 10px 24px; border-radius: 30px; font-weight: 600; color: #fff; background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+            <i class="ri-time-line" style="color: #3b82f6; margin-right: 6px;"></i> <span id="radarTimeText" style="letter-spacing: 0.5px;">레이더 시간 정보</span>
+        </div>
+        <header class="top-nav glass-panel fade-in-down">
+            <div class="logo">
+                <i class="ri-dashboard-3-line"></i>
+                <div class="logo-text">
+                    <h1 style="font-size: 1.4rem; letter-spacing: -0.5px;">하천 수질 통합 모니터링 시스템</h1>
+                </div>
+            </div>
+            <div class="current-location" style="display: flex; align-items: center; gap: 15px;">
+                <div style="position: relative; display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.2); padding: 4px 12px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);">
+                    <i class="ri-search-line" style="color: #94a3b8;"></i>
+                    <input type="text" id="addressSearch" placeholder="장소, 주소 검색 (예: 한강대교)" 
+                        style="background: transparent; border: none; color: #fff; outline: none; font-size: 0.85rem; width: 180px;"
+                        onkeypress="if(event.key === 'Enter') searchLocation()" onclick="showSearchHistory()" autocomplete="off">
+                    <button onclick="searchLocation()" style="background: none; border: none; color: #3b82f6; cursor: pointer; padding: 0 4px;"><i class="ri-arrow-right-line"></i></button>
+                    <!-- 검색 결과 드롭다운 표시기 -->
+                    <div id="searchResultsDropdown" style="display: none; position: absolute; top: 100%; left: 0; min-width: 320px; margin-top: 8px; background: rgba(15,23,42,0.95); border: 1px solid rgba(59,130,246,0.4); border-radius: 8px; max-height: 250px; overflow-y: auto; z-index: 9999; flex-direction: column; box-shadow: 0 10px 25px rgba(0,0,0,0.5); backdrop-filter: blur(10px);">
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <i class="ri-map-pin-user-line"></i><span id="currentLocText" style="font-size: 0.85rem; color: #cbd5e1;">서울특별시 한강 유역</span>
+                </div>
+                <button id="updateBtn" class="search-btn" style="background: var(--success); display: flex; align-items: center; gap: 6px; padding: 8px 16px; font-size: 0.85rem;" onclick="manualUpdate()">
+                    <i class="ri-refresh-line"></i> 데이터 갱신
+                </button>
+            </div>
+        </header>
+
+        <!-- 패널 토글 버튼 -->
+        <div class="panel-toggle left-toggle" id="leftPanelToggle" onclick="toggleSidePanel('left')" title="분석 패널 접기">
+            <i class="ri-arrow-left-s-line"></i>
+        </div>
+        <div class="panel-toggle right-toggle" id="rightPanelToggle" onclick="toggleSidePanel('right')" title="대응 패널 접기">
+            <i class="ri-arrow-right-s-line"></i>
+        </div>
+
+        <aside id="leftPanel" class="left-panel glass-panel fade-in-left">
+            <div class="panel-header">
+                <h2><i class="ri-rainy-line"></i> 강수 예측 분석</h2>
+            </div>
+            
+            <!-- 지도 레이어 설정 (고정 위치) -->
+            <div class="card" style="margin: 10px 20px; padding: 0; overflow: hidden; background: rgba(59,130,246,0.15); border: 1px solid rgba(59,130,246,0.3); z-index: 101;">
+                <div style="padding: 12px 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-size: 0.9rem; font-weight: 600; color: #fff;" onclick="toggleSection('mapLayerContent', 'mapLayerIcon')">
+                    <span style="display: flex; align-items: center; gap: 6px;"><i class="ri-map-2-line" style="color:#60a5fa;"></i> 지도 및 레이어 설정</span>
+                    <i id="mapLayerIcon" class="ri-arrow-down-s-line" style="color:#94a3b8;"></i>
+                </div>
+                <div id="mapLayerContent" style="display: none; padding: 0 16px 16px 16px;">
+                    <div style="margin-top: 5px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                        <div style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 8px;">배경 지도</div>
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #cbd5e1; cursor: pointer;">
+                                <input type="radio" name="baseMap" value="vworld" checked onchange="changeBaseMap(this.value)" style="accent-color: #3b82f6;"> 🗾 브이월드 2D
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #cbd5e1; cursor: pointer;">
+                                <input type="radio" name="baseMap" value="vworld_sat" onchange="changeBaseMap(this.value)" style="accent-color: #3b82f6;"> 🛰️ 브이월드 위성
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #cbd5e1; cursor: pointer;">
+                                <input type="radio" name="baseMap" value="cartodark" onchange="changeBaseMap(this.value)" style="accent-color: #3b82f6;"> 🌌 CARTO 다크
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #cbd5e1; cursor: pointer;">
+                                <input type="radio" name="baseMap" value="osm" onchange="changeBaseMap(this.value)" style="accent-color: #3b82f6;"> 🗺️ OpenStreetMap
+                            </label>
+                        </div>
+                    </div>
+                    <div class="layer-toggles">
+                        <div style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 8px;">기상 레이어</div>
+                        <label class="toggle" style="display: flex; align-items: center; gap: 8px; color: #cbd5e1; cursor: pointer; margin-bottom: 8px;"><input type="checkbox" id="layerKmaRadar" checked> 🇰🇷 KMA 실황 레이더</label>
+                        <div>
+                            <label class="toggle" style="display: flex; align-items: center; gap: 8px; color: #58a6ff; font-weight: 700; cursor: pointer;"><input type="checkbox" id="layerWindy"> 🌀 글로벌 예보 (Windy)</label>
+                            <a href="#" id="windyExternalLink" target="_blank" style="display:none; color:#58a6ff; font-size:11px; margin-left:24px; text-decoration:underline;">🔗 크게 보기</a>
+                        </div>
+                    </div>
+                    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.08);">
+                        <div style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 8px;">관측소 레이어</div>
+                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                            <div>
+                                <label class="toggle" style="display: flex; align-items: center; gap: 8px; color: #34d399; cursor: pointer;">
+                                    <input type="checkbox" id="layerWaterQuality">
+                                    💧 환경부 수질측정망
+                                </label>
+                                <div id="wqStationCount" style="font-size: 0.68rem; color: #64748b; margin-top: 2px; margin-left: 28px;"></div>
+                            </div>
+                            <div>
+                                <label class="toggle" style="display: flex; align-items: center; gap: 8px; color: #60a5fa; cursor: pointer;">
+                                    <input type="checkbox" id="layerWaterLevel">
+                                    🌊 전국 수위관측소 (HRFCO)
+                                </label>
+                                <div id="wlStationCount" style="font-size: 0.68rem; color: #64748b; margin-top: 2px; margin-left: 28px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-content">
+
+                <div class="card weather-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="toggleSection('weatherContent', 'weatherArrowIcon')">
+                        <h3 style="margin-bottom: 0;">현재 기상 (실시간 분석)</h3>
+                        <i id="weatherArrowIcon" class="ri-arrow-up-s-line" style="color: var(--text-sec);"></i>
+                    </div>
+                    <div id="weatherContent" style="margin-top: 12px;">
+                        <div class="weather-now" id="currentWeatherBox">
+                            <i id="currentWeatherIcon" class="ri-sun-cloudy-line weather-icon"></i>
+                            <div class="weather-data">
+                                <span class="temp" id="currentTemp">--°C</span>
+                                <span class="status" id="currentStatus">데이터를 수신하는 중입니다...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card chart-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="toggleSection('chartContent', 'chartIcon')">
+                        <h3 style="margin-bottom: 0;">72시간 강수 예측 데이터 (다중 모델 비교)</h3>
+                        <i id="chartIcon" class="ri-arrow-up-s-line" style="color: var(--text-sec);"></i>
+                    </div>
+                    <div id="chartContent" style="margin-top: 15px;">
+                        <div class="model-filters" style="margin-bottom: 12px; display: flex; gap: 12px; flex-wrap: wrap; background: rgba(15,23,42,0.5); padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); font-size: 0.8rem;">
+                            <label class="toggle" style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="checkbox" data-model="kma" checked onchange="toggleModelFilter(this)">
+                                <span style="color:#3b82f6; font-weight:600;">한국(기상청)</span>
+                            </label>
+                            <label class="toggle" style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="checkbox" data-model="best" checked onchange="toggleModelFilter(this)">
+                                <span style="color:#8b5cf6; font-weight:600;">Open-Meteo</span>
+                            </label>
+                        </div>
+                        <div class="chart-container" style="height: 300px; min-height: 300px;"><canvas id="precipChart"></canvas></div>
+                    </div>
+                </div>
+                <div class="card table-card" style="padding: 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <div style="display: flex; align-items: center; gap: 8px; cursor: pointer;" onclick="toggleSection('tableContent', 'tableIcon')">
+                            <h3 style="margin-bottom: 0; white-space: nowrap; letter-spacing: -0.5px; font-size: 0.9rem;">선택 지점 강수 예측 데이터</h3>
+                            <i id="tableIcon" class="ri-arrow-up-s-line" style="color: var(--text-sec);"></i>
+                        </div>
+                        <select id="dateFilter" style="width: auto; min-width: 100px; padding: 4px 8px; font-size: 0.8rem; border-radius: 6px; background: rgba(15,23,42,0.8); color: #fff; border: 1px solid rgba(255,255,255,0.2); cursor: pointer; outline: none;">
+                            <option value="all">전체 (72시간)</option>
+                        </select>
+                    </div>
+                    <div id="tableContent">
+                        <table class="data-table" style="font-size: 0.85rem;">
+                            <thead>
+                                <tr>
+                                    <th>시간</th>
+                                    <th>예측 모델</th>
+                                    <th>강수확률</th>
+                                    <th>강수량</th>
+                                </tr>
+                            </thead>
+                            <tbody id="precipTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <aside id="rightPanel" class="right-panel glass-panel fade-in-right">
+            <div style="padding: 8px 20px 0; text-align: right;">
+                <a href="https://www.water.or.kr/gis/gis/index.do?menuId=92&lang=ko" target="_blank" 
+                   style="font-size: 0.7rem; color: #60a5fa; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; opacity: 0.8;">
+                    <i class="ri-map-2-line"></i> 물정보포털(GIS) 바로가기
+                </a>
+            </div>
+            <div class="panel-header">
+                <h2><i class="ri-alarm-warning-line"></i> 강우시 모니터링 출장 의사결정</h2>
+            </div>
+            <div class="panel-content">
+                
+                <!-- ★ 모니터링 현장 대응 결과(의사결정) 카드 -->
+                <div class="card decision-card" id="decisionCard" style="display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="toggleSection('decisionContent', 'decisionIcon')">
+                        <h3 style="margin-bottom: 0;"><i class="ri-compass-3-line"></i> 모니터링 현장 대응 결과</h3>
+                        <i id="decisionIcon" class="ri-arrow-up-s-line" style="color: var(--text-sec);"></i>
+                    </div>
+                    <div id="decisionContent" style="margin-top: 15px;">
+                        <div id="decisionResultBox" style="padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: center; border: 2px solid transparent;">
+                            <div id="decisionStatusText" style="font-size: 1.5rem; font-weight: 700; margin-bottom: 5px;">판단 중...</div>
+                            <div id="decisionReasonText" style="font-size: 0.85rem; color: #cbd5e1; line-height: 1.4;">데이터 분석 중입니다.</div>
+                        </div>
+                        <div id="decisionWindowsGrid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <!-- JS 렌더링 -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ★ 모니터링 현황판 카드 -->
+                <div class="card monitoring-card" id="monitoringCard" style="display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; margin-bottom: 12px;" onclick="toggleSection('monitoringContent', 'monitoringIcon')">
+                        <h3 style="margin-bottom: 0;"><i class="ri-dashboard-2-line"></i> 모니터링 현황판</h3>
+                        <i id="monitoringIcon" class="ri-arrow-up-s-line" style="color: var(--text-sec);"></i>
+                    </div>
+                    <div id="monitoringContent">
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center;">
+                            <!-- 예상 총 강수량 -->
+                            <div style="background: rgba(15,23,42,0.6); border: 1px solid rgba(255,255,255,0.05); padding: 12px 8px; border-radius: 8px;">
+                                <div style="font-size: 0.72rem; color: #94a3b8; margin-bottom: 6px; letter-spacing: -0.5px;">예상 총 강수량</div>
+                                <div style="font-size: 1.2rem; font-weight: 700; color: #3b82f6;"><span id="monTotalRain">0.0</span><span style="font-size:0.75rem; color:#94a3b8; font-weight:400; margin-left:2px;">mm</span></div>
+                            </div>
+                            <!-- 누적 강수량 -->
+                            <div style="background: rgba(15,23,42,0.6); border: 1px solid rgba(255,255,255,0.05); padding: 12px 8px; border-radius: 8px;">
+                                <div style="font-size: 0.72rem; color: #94a3b8; margin-bottom: 6px; letter-spacing: -0.5px;">현 누적 강수량</div>
+                                <div style="font-size: 1.2rem; font-weight: 700; color: #10b981;"><span id="monCumRain">0.0</span><span style="font-size:0.75rem; color:#94a3b8; font-weight:400; margin-left:2px;">mm</span></div>
+                            </div>
+                            <!-- 평균 강우강도 -->
+                            <div style="background: rgba(15,23,42,0.6); border: 1px solid rgba(255,255,255,0.05); padding: 12px 8px; border-radius: 8px;">
+                                <div style="font-size: 0.72rem; color: #94a3b8; margin-bottom: 6px; letter-spacing: -0.5px;">평균 강우강도</div>
+                                <div style="font-size: 1.2rem; font-weight: 700; color: #f59e0b;"><span id="monAvgInt">0.0</span><span style="font-size:0.75rem; color:#94a3b8; font-weight:400; margin-left:2px;">mm/h</span></div>
+                            </div>
+                        </div>
+                        <div id="monEventInfo" style="margin-top: 10px; padding: 8px; background: rgba(59,130,246,0.08); border-radius: 6px; font-size: 0.75rem; color: #cbd5e1; text-align: center; border-left: 3px solid #3b82f6;">
+                            분석 중...
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert-box info" style="flex-direction: column;">
+                    <div style="display: flex; gap: 8px; cursor: pointer; align-items: center;" onclick="toggleSection('guideContent', 'guideIcon')">
+                        <i class="ri-information-line"></i>
+                        <strong style="flex-grow: 1;">다중 시간창 의사결정 가이드 (KMA 기준)</strong>
+                        <i id="guideIcon" class="ri-arrow-down-s-line"></i>
+                    </div>
+                    <ul id="guideContent"
+                        style="padding-left: 20px; font-size: 0.75rem; margin-top: 10px; color: #cbd5e1; list-style-type: none; display: none; word-break: keep-all; letter-spacing: -0.3px;">
+                        <li style="margin-bottom: 6px; padding: 6px 10px; background: rgba(255,255,255,0.03); border-radius: 6px; border-left: 3px solid #94a3b8;">
+                            ⏰ <strong>전제조건</strong>: 선행무강우일수(ADD) <strong style="color:#f59e0b;">3일 이상 필수</strong>
+                        </li>
+                        <li style="margin-bottom: 6px; padding: 6px 10px; background: rgba(239,68,68,0.08); border-radius: 6px; border-left: 3px solid #ef4444;">
+                            🚨 <strong style="color:#ef4444;">대응 시작</strong>: 각 구간(현재~12h, 24h, 72h) 강수확률 50% 이상 &amp; 30mm 이상
+                        </li>
+                        <li style="margin-bottom: 4px; padding: 6px 10px; background: rgba(255,255,255,0.03); border-radius: 6px; border-left: 3px solid #64748b;">
+                            🔘 <strong style="color:#64748b;">미대응</strong>: 상기 조건 미달 시 (평시 모니터링 유지)
+                        </li>
+                        <li style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); color: #60a5fa; font-size: 0.75rem;">
+                            💡 선행무강우일수(ADD) 3일 이상은 <strong>필수 조건</strong>입니다. ADD가 3일 미만이면 강수 예측과 관계없이 현장 대응 불필요합니다.
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- ★ 즐겨찾기 지점 카드 -->
+                <div class="card" style="padding: 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; margin-bottom: 12px;" onclick="toggleSection('favContent', 'favIcon')">
+                        <h3 style="margin-bottom: 0;"><i class="ri-star-line" style="color:#facc15;"></i> 즐겨찾기 지점</h3>
+                        <i id="favIcon" class="ri-arrow-up-s-line" style="color: var(--text-sec);"></i>
+                    </div>
+                    <div id="favContent">
+                        <div id="favoritesList" style="display: flex; flex-direction: column; gap: 6px; max-height: 200px; overflow-y: auto;">
+                            <div style="text-align:center; padding:12px; color:#64748b; font-size:0.8rem;">
+                                <i class="ri-star-line" style="font-size:1.5rem; color:#475569; display:block; margin-bottom:6px;"></i>
+                                지도 클릭 시 팝업의 ⭐ 버튼으로<br>즐겨찾기에 추가할 수 있습니다.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card" style="padding: 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; margin-bottom: 12px;" onclick="toggleSection('linkContent', 'linkIcon')">
+                        <h3 style="margin-bottom: 0;"><i class="ri-search-eye-line"></i> 연관 모니터링 사이트</h3>
+                        <i id="linkIcon" class="ri-arrow-up-s-line" style="color: var(--text-sec);"></i>
+                    </div>
+                    <div id="linkContent">
+                        <div style="position: relative; margin-bottom: 10px;">
+                            <i class="ri-search-line" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 0.8rem;"></i>
+                            <input type="text" id="siteSearchInput" placeholder="사이트명 검색(필터)..." 
+                                style="width: 100%; padding: 6px 10px 6px 30px; border-radius: 6px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 0.8rem; outline: none;">
+                        </div>
+                        <div id="siteList" style="display: flex; flex-direction: column; gap: 6px; max-height: 200px; overflow-y: auto;">
+                            <!-- 기상/수위/수질 연관 사이트 -->
+                            <a href="https://www.weather.go.kr" target="_blank" class="site-link" data-name="기상청 기상정보 초단기예보"><i class="ri-cloud-windy-line"></i> 기상청 기상레이더 (실시간)</a>
+                            <a href="http://www.hrfco.go.kr" target="_blank" class="site-link" data-name="한강홍수통제소 수위관측소"><i class="ri-temp-cold-line"></i> 한강홍수통제소 (수위/강수)</a>
+                            <a href="http://water.nier.go.kr" target="_blank" class="site-link" data-name="물환경정보시스템 수질측정망"><i class="ri-database-2-line"></i> 물환경정보시스템 (수질자료)</a>
+                            <a href="https://map.naver.com" target="_blank" class="site-link" data-name="네이버 지도 상세위치"><i class="ri-map-pin-line"></i> 네이버 지도 (좌표 확인용)</a>
+                            <a href="https://map.kakao.com" target="_blank" class="site-link" data-name="카카오 맵 상세위치"><i class="ri-chat-1-line"></i> 카카오 맵 (지적편집도 보기)</a>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </aside>
+
+        <div class="map-controls glass-panel"
+            style="padding: 12px 24px; border-radius: 30px; display: flex; align-items: center; gap: 16px;">
+
+            <button class="glass-btn tooltip-btn" style="width: 40px; height: 40px; font-size: 1.1rem;" title="조사지점 시각화"
+                onclick="focusInvestigationPoint()">
+                <i class="ri-focus-3-line"></i>
+            </button>
+        </div>
+        <div id="drop-zone"
+            style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(16, 185, 129, 0.2); z-index: 9999; display: none; align-items: center; justify-content: center; backdrop-filter: blur(4px); pointer-events: none; border: 4px dashed #10b981; border-radius: 16px; margin: 20px;">
+            <div style="background: rgba(0,0,0,0.7); padding: 30px 50px; border-radius: 20px; text-align: center;">
+                <i class="ri-file-upload-line" style="font-size: 4rem; color: #10b981;"></i>
+                <h2 style="color: white; margin-top: 10px;">여기에 GIS 파일 놓기</h2>
+                <p style="color: #cbd5e1; font-size: 0.9rem; margin-top: 5px;">GeoJSON 형식 또는 Shapefile(.zip) 지원</p>
+            </div>
+        </div>
+    </div>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    <script src="https://unpkg.com/shpjs@latest/dist/shp.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+    <script src="./js/water_quality_stations.js"></script>
+    <script src="./js/app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').then(reg => {
+                    console.log('App install ready!', reg);
+                }).catch(err => {
+                    console.log('App registration failed', err);
+                });
+            });
+        }
+    </script>
+</body>
+
+</html>

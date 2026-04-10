@@ -1,6 +1,7 @@
 import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from datetime import datetime, timezone, timedelta
 import time
 import math
@@ -13,6 +14,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 프론트엔드 정적 파일 서빙 (안드로이드 앱 화면용)
+app.mount("/", StaticFiles(directory="../frontend", html=True), name="static")
 
 cache = {}
 CACHE_TTL = 600
@@ -86,8 +90,8 @@ async def get_forecast(lat: float, lon: float):
     }
 
     # 미래 예측치 (72시간)
-    future_labels = ["1~3h", "3~6h", "6~12h", "12~24h", "24~48h", "48~72h"]
-    window_ranges = [(0, 3), (3, 6), (6, 12), (12, 24), (24, 48), (48, 72)]
+    future_labels = ["1~6h", "6~12h", "12~24h", "24~72h"]
+    window_ranges = [(0, 6), (6, 12), (12, 24), (24, 72)]
     windows = []
 
     for name, (start, end) in zip(future_labels, window_ranges):
@@ -96,50 +100,41 @@ async def get_forecast(lat: float, lon: float):
         win_prob = prob_kma[current_idx + start + 1 : current_idx + end + 1]
         
         total_rain = sum([x if x is not None else 0 for x in win_precip])
-        avg_prob = sum([x if x is not None else 0 for x in win_prob]) / len(win_prob) if win_prob else 0
         
-        grade = "안전"
-        if total_rain >= 30 or avg_prob >= 85: grade = "위험"
-        elif total_rain >= 20 or avg_prob >= 70: grade = "경고"
-        elif total_rain >= 10 or avg_prob >= 50: grade = "주의"
+        valid_probs = [x for x in win_prob if x is not None and x > 0]
+        avg_prob = sum(valid_probs) / len(valid_probs) if valid_probs else 0
+        
+        status = "미대응"
+        if avg_prob >= 80: status = "즉시 대응"
+        elif avg_prob >= 60: status = "대응 준비"
+        elif avg_prob >= 50: status = "예의 주시"
         
         windows.append({
             "name": name,
             "total_rain": round(total_rain, 1),
             "avg_prob": round(avg_prob),
-            "grade": grade
+            "status": status
         })
 
-    # 최종 의사결정 (우선순위 역순)
-    decision = {"status": "미대응", "color": "#64748b", "target_window": None}
-    
-    # 장기 검토
-    for w in windows[4:]: # 24~48h, 48~72h
-        if w["grade"] != "안전":
-            decision = {"status": "장기 검토", "color": "#8b5cf6", "target_window": w}
-    
-    # 사전 계획
-    if windows[3]["grade"] != "안전":
-        decision = {"status": "사전 계획", "color": "#3b82f6", "target_window": windows[3]}
-        
-    # 예의주시
-    if windows[2]["grade"] != "안전":
-        decision = {"status": "예의주시", "color": "#eab308", "target_window": windows[2]}
-        
-    # 대응 준비
-    if windows[1]["grade"] in ["위험", "경고"] or windows[0]["grade"] == "경고":
-        decision = {"status": "대응 준비", "color": "#f97316", "target_window": windows[1]}
-        
-    # 즉시 대응
-    if windows[0]["grade"] == "위험":
-        decision = {"status": "즉시 대응", "color": "#ef4444", "target_window": windows[0]}
+    # 최종 의사결정 (24~72h 기준)
+    w24_72 = next((w for w in windows if w["name"] == "24~72h"), None)
+    if not w24_72:
+        decision = {"status": "미대응", "color": "#64748b", "target_window": None}
+    else:
+        color = "#64748b"
+        if w24_72["status"] == "즉시 대응": color = "#ef4444"
+        elif w24_72["status"] == "대응 준비": color = "#f97316"
+        elif w24_72["status"] == "예의 주시": color = "#eab308"
+        decision = {"status": w24_72["status"], "color": color, "target_window": w24_72}
 
     # 이유 생성
-    if decision["status"] == "미대응":
-        reason = "모든 시간창에서 한국기상청(KMA) 예측 기준을 밑돌아 가장 안전한 <b>미대응</b> 상태로 진단되었습니다."
+    tw = decision.get("target_window")
+    if not tw:
+        reason = "기상 데이터가 부족하여 종합 판단 구간(24~72시간)을 분석할 수 없습니다."
+    elif decision["status"] == "미대응":
+        reason = f"종합 판단 구간(24~72시간) 기준, 예상 누적 강수량은 {tw['total_rain']}mm, 강수 확률은 {tw['avg_prob']}%로 기준치(50%) 미만이므로 최종 미대응 상태입니다."
     else:
-        tw = decision["target_window"]
-        reason = f"향후 <b>{tw['name'].replace('h','시간')}</b> 내 한국기상청 기준 예측강수량이 <b>{tw['total_rain']}mm</b>, 강수확률이 <b>{tw['avg_prob']}%</b>로 <b>{tw['grade']}</b> 수준이므로 <b>{decision['status']}</b> 조치가 요구됩니다."
+        reason = f"향후 결론 판단 구간(24~72시간) 내 예상 누적 강수량은 {tw['total_rain']}mm, 예측 강수확률 평균은 {tw['avg_prob']}%에 달하므로 최종 {decision['status']} 조치가 요구됩니다. (세부 상황 표 참조)"
 
     return {
         "lat": lat,

@@ -1,0 +1,364 @@
+Total Pages: 179
+
+--- Page 0 ---
+Approved for Public Release. Distribution Unlimited.
+HEC-RAS
+River Analysis System
+HEC-RAS Mapper User's Manual
+Version 6.5
+Exported - March 2024
+
+--- Page 1 ---
+HEC-RAS Mapper User's Manual – 2
+Table of Contents
+1 INTRODUCTION .................................................................................... 9
+2 OVERVIEW .......................................................................................... 10
+MENU SYSTEM ........................................................................................................................... 10
+LAYER LIST ................................................................................................................................. 12
+Layer Properties ..................................................................................................................... 12
+Vector Data ........................................................................................................................................................... 13
+Raster Data ........................................................................................................................................................... 14
+Features.................................................................................................................................. 16
+Geometries ............................................................................................................................. 16
+Results .................................................................................................................................... 16
+Map Layers.............................................................................................................................. 17
+Terrains................................................................................................................................... 17
+STATUS WINDOW ...................................................................................................................... 17
+Messages ................................................................................................................................ 17
+Views....................................................................................................................................... 18
+Profile Lines............................................................................................................................ 18
+Active Features....................................................................................................................... 18
+Watch Layer Values ................................................................................................................ 19
+MAPPING WINDOW.................................................................................................................... 19
+Legend .................................................................................................................................... 20
+Scale Bar................................................................................................................................. 20
+North Arrow ............................................................................................................................ 21
+3 SETTINGS AND OPTIONS ...................................................................... 22
+PROJECT SETTINGS .................................................................................................................. 22
+Projection ............................................................................................................................... 22
+General ................................................................................................................................... 23
+Render Mode .......................................................................................................................... 23
+Mesh Tolerances .................................................................................................................... 24
+GLOBAL SETTINGS .................................................................................................................... 25
+
+--- Page 2 ---
+HEC-RAS Mapper User's Manual – 3
+General ................................................................................................................................... 25
+RAS Layers .............................................................................................................................. 26
+Map Surface Fill ...................................................................................................................... 27
+Editing Tools........................................................................................................................... 28
+4 SPATIAL REFERENCE SYSTEM ............................................................... 30
+WEB IMAGERY ............................................................................................................................ 31
+5 TERRAIN LAYER................................................................................... 33
+RAS TERRAIN DEVELOPMENT ................................................................................................... 33
+STEPS IN CREATING A TERRAIN LAYER..................................................................................... 35
+TERRAIN VISUALIZATION .......................................................................................................... 36
+TERRAIN ASSOCIATION............................................................................................................. 38
+EXPORTING RAS TERRAINS....................................................................................................... 39
+Resample to Single Terrain ................................................................................................... 39
+Clip Terrain to Geometry Extents .......................................................................................... 40
+Clip Terrain to Current View .................................................................................................. 40
+DOWNLOADING TERRAIN DATA ................................................................................................ 41
+Query Products ...................................................................................................................... 41
+Select Products ...................................................................................................................... 43
+Download Products ............................................................................................................... 46
+Create a RAS Terrain .............................................................................................................. 47
+6 LAND CLASSIFICATION LAYERS ............................................................. 49
+NEW LAYERS .............................................................................................................................. 49
+LAND COVER LAYER................................................................................................................... 50
+Creating the Land Cover Layer .............................................................................................. 50
+Parameterizing Land Cover Data ........................................................................................................................ 53
+SOILS LAYER .............................................................................................................................. 54
+Importing gSSURGO Data ...................................................................................................... 55
+INFILTRATION LAYER................................................................................................................. 56
+Using a Land Cover and Soils Layer ...................................................................................... 56
+Using a Classification Shapefile Layer .................................................................................. 57
+CLASSIFICATION POLYGONS .................................................................................................... 59
+ASSOCIATING THE LAND CLASSIFICATION LAYER WITH A GEOMETRY................................... 59
+
+--- Page 3 ---
+HEC-RAS Mapper User's Manual – 4
+USING LAND COVER FOR MANNING'S N VALUES ..................................................................... 61
+7 GEOMETRY DATA................................................................................. 62
+EDITING TOOLS ......................................................................................................................... 64
+Add New.................................................................................................................................. 66
+Select/Edit Feature ................................................................................................................ 66
+EDITING A GEOMETRY ............................................................................................................... 68
+Updating Geometry ............................................................................................................... 69
+RIVERS........................................................................................................................................ 70
+JUNCTIONS ............................................................................................................................... 71
+RIVER STATION MARKERS......................................................................................................... 72
+FLOW PATH LINES ..................................................................................................................... 73
+BANK LINES ............................................................................................................................... 73
+CROSS SECTIONS ...................................................................................................................... 73
+XS Properties .......................................................................................................................... 74
+XS Plot..................................................................................................................................... 75
+Display Properties .................................................................................................................. 76
+Elevation Profiles from Points............................................................................................... 76
+River Stations Table ............................................................................................................... 77
+EDGE LINES................................................................................................................................ 78
+CROSS SECTION INTERPOLATION SURFACE ........................................................................... 79
+INEFFECTIVE FLOW AREAS........................................................................................................ 79
+BLOCKED OBSTRUCTIONS ....................................................................................................... 80
+STORAGE AREAS........................................................................................................................ 81
+2D FLOW AREAS......................................................................................................................... 81
+Perimeters .............................................................................................................................. 82
+Computation Points............................................................................................................... 84
+Breaklines............................................................................................................................... 85
+Refinement Regions............................................................................................................... 88
+BRIDGES/CULVERTS.................................................................................................................. 90
+Culvert Barrel Editor .............................................................................................................. 91
+Plotting Bridges...................................................................................................................... 91
+INLINE STRUCTURES................................................................................................................. 92
+
+--- Page 4 ---
+HEC-RAS Mapper User's Manual – 5
+LATERAL STRUCTURES ............................................................................................................. 94
+SA/2D CONNECTIONS ............................................................................................................... 95
+PUMP STATIONS........................................................................................................................ 96
+MANNING'S N VALUES............................................................................................................... 97
+Final n Values Layer ............................................................................................................... 99
+PERCENT IMPERVIOUS............................................................................................................ 100
+INFILTRATION PARAMETERS .................................................................................................. 101
+BOUNDARY CONDITIONS ........................................................................................................ 102
+Boundary Conditions ........................................................................................................... 102
+ERRORS.................................................................................................................................... 102
+8 TERRAIN MODIFICATION .....................................................................104
+CROSS SECTION INTERPOLATION SURFACE ......................................................................... 104
+TERRAIN MODIFICATION TOOLS............................................................................................. 105
+Clone Terrain........................................................................................................................ 106
+Add New Modification Layer................................................................................................ 106
+Simple Shape Modification.................................................................................................. 107
+Line Modifications................................................................................................................ 109
+Polygon Modification........................................................................................................... 113
+NATIONAL LEVEE DATABASE (NLD) DATA .............................................................................. 114
+NLD Data Download............................................................................................................. 114
+Using NLD for Terrain Modification..................................................................................... 117
+9 MAPPING RESULTS.............................................................................119
+CREATING RESULTS MAPS...................................................................................................... 120
+Result Maps .......................................................................................................................... 120
+Associated Terrain ............................................................................................................................................. 122
+Map Type ............................................................................................................................................................ 122
+Profiles................................................................................................................................................................ 124
+Output Mode ...................................................................................................................................................... 125
+Dynamic versus Stored Maps ............................................................................................................................ 125
+Creating Multiple Maps ........................................................................................................ 126
+MANAGING RESULTS MAPS .................................................................................................... 127
+RAS Results........................................................................................................................... 128
+Interpolation Surface......................................................................................................................................... 128
+
+--- Page 5 ---
+HEC-RAS Mapper User's Manual – 6
+Water Surface Elevation .................................................................................................................................... 129
+Depth .................................................................................................................................................................. 130
+Inundation Boundary......................................................................................................................................... 130
+Velocity ............................................................................................................................................................... 136
+EVALUATING RAS RESULTS..................................................................................................... 139
+Layer Watch List ................................................................................................................... 141
+Time Series Plots.................................................................................................................. 142
+Profile Lines.......................................................................................................................... 144
+Plot Profile.......................................................................................................................................................... 144
+Plot Time Series ................................................................................................................................................. 146
+Creating Vector Contours .................................................................................................................................. 147
+MAPPING OPTIONS ................................................................................................................. 147
+Render Mode ........................................................................................................................ 147
+Horizontal Water Surface................................................................................................................................... 148
+Sloping Water Surface ....................................................................................................................................... 148
+Additional Plot Options ....................................................................................................... 150
+Plot 2D Hydraulic Connectivity ......................................................................................................................... 150
+Plot 2D Water Surface Gradient......................................................................................................................... 151
+Draw Map Values ................................................................................................................................................ 152
+Draw Perpendicular Face Velocities.................................................................................................................. 153
+Face Low-Elevation Centroid ............................................................................................................................ 154
+Display Arrival Times as Dates........................................................................................................................... 154
+Plot Model Boundary Deficiencies .................................................................................................................... 155
+Export Options ..................................................................................................................... 156
+Export Raster ...................................................................................................................................................... 156
+As Contour Lines ................................................................................................................................................ 157
+As Contour Bands............................................................................................................................................... 157
+10 RASTER CALCULATOR.........................................................................159
+OVERVIEW ................................................................................................................................ 159
+SCRIPTS ................................................................................................................................... 160
+LAYER VARIABLES.................................................................................................................... 161
+RASTER LAYER VARIABLES ...................................................................................................... 162
+CALCULATION CODE ............................................................................................................... 163
+HELP......................................................................................................................................... 165
+
+--- Page 6 ---
+HEC-RAS Mapper User's Manual – 7
+CALCULATED LAYER ................................................................................................................ 166
+11 GOOGLE EARTH EXPORT .....................................................................168
+KML EXPORT ............................................................................................................................ 168
+3D KML EXPORT....................................................................................................................... 169
+3D KML EXPORT OPTIONS ...................................................................................................... 172
+Boundary Polygon Filter Tolerance .................................................................................... 172
+Interior Polygon (Cell) Size .................................................................................................. 172
+Number of Decimal Places................................................................................................... 172
+Interior Polygon Values........................................................................................................ 173
+Water Surface Plotting Method ........................................................................................... 174
+GOOGLE EARTH VISUALIZATION ............................................................................................ 175
+12 TILE MAP SERVER ...............................................................................176
+EXPORTING RAS TILES ............................................................................................................ 176
+VIEWING RAS TILES ................................................................................................................. 177
+
+--- Page 7 ---
+HEC-RAS Mapper User's Manual – 8
+Geospatial capabilities in HEC-RAS.
+
+--- Page 8 ---
+Introduction
+HEC-RAS Mapper User's Manual – 9
+1 INTRODUCTION
+Geospatial capabilities are available in HEC-RAS to assist the hydraulic engineer to create and refine 
+the model geometry and analyze computed results.  This capability to visualize the combination of 
+geometric data (terrain, river networks, cross section locations, cross section parameters, 2D 
+meshes, etc.) and simulation results (water surface depths, velocities, etc.) allows HEC-RAS users to 
+more readily identify hydraulic model deficiencies and make improvements.  
+While HEC-RAS Mapper is not intended to replace a GIS, as it provides very hydraulic-modeling 
+specific tools, it has a tremendous number of geospatial capabilities for working with geospatial 
+data. Not only does RAS Mapper provide the user with tools to edit HEC-RAS data layers, the editing 
+tools can be used to edit generic shapefiles.  Not only can you visualize HEC-RAS results, but you can 
+symbolize and query information in numerous ways to assist in the analysis of the river hydraulic 
+modeling.
+This document will discuss how to use the HEC-RAS Mapper to develop an HEC-RAS model, perform 
+mapping of model output to view and compare results, and publish map products.
+
+--- Page 9 ---
+Overview
+HEC-RAS Mapper User's Manual – 10
+2 OVERVIEW
+The HEC-RAS Mapper module is an interface accessed from the main HEC-RAS program and provides 
+a geospatial visualization of HEC-RAS geometry, simulation results, and other pertinent geospatial 
+data to assist users to efficiently create river hydraulic models.  The HEC-RAS Mapper module is 
+accessed using the GIS Tools | RAS Mapper menu item on the main HEC-RAS program interface or by 
+pressing the    RAS Mapper button, shown below.
+The RAS Mapper interface, shown below, is comprised of a menu system, data layers list, status 
+window and the mapping window.
+Menu System
+The menu system for RAS Mapper provides access to the most often used capabilities.  Many other 
+capabilities are available through right-click on a Group Layer, Layer, or selected feature.  A summary 
+of menu options is provided in the table below. Each of the menu items is discussed in detail 
+throughout the users documentation.
+
+
+--- Page 10 ---
+Overview
+HEC-RAS Mapper User's Manual – 11
+Menu Description
+File
+    Open If RAS Mapper is launched outside of HEC-RAS, this is used to open a .rasmap file.
+    Save Saves RAS Mapper state - layer symbology, zoom, etc.
+    Exit Closes RAS Mapper
+Project
+    Set Projection Used to set the coordinate reference system for the project - necessary to use 
+with web imagery.
+    Create New RAS Terrain Used to import a terrain model(s) into a single, RAS Terrain.
+    Create New Geometry Used to create an empty geometry to begin model development.
+    Create New RAS Layer Used to create RAS-specific layers such as a Land Cover layer for Manning's n 
+values.
+    Manage Layer Associations Used to associate a Geometry or Result file with Terrain and Land Cover layers.
+    Manage Results Maps Used to create a new result map and recompute multiple result maps.
+    Add Web Imagery Used to add web imagery services to RAS Mapper.
+    Add Layer Used to add geospatial data (.shp, .tiff, etc.) to RAS Mapper.
+Tools
+    Options Provides access to all RAS Mapper Options.
+    Create Calculated Layer Opens the RASter Calculator to create a calculated layer.
+    Create Multiple Maps Provides a dialog for creating multiple results maps at one time.
+    Show Legend Shows the legend for the Selected Layer.
+    Plot Tick Marks Plots tick marks on Profile Lines.
+    Remove Missing Layers Cleans up the RAS Mapper project by removing references to files that were not 
+found.
+Help
+    RAS Mapper Help Opens the RAS Mapper help documentation.
+    About Provides the RAS Mapper version number.
+
+--- Page 11 ---
+Overview
+HEC-RAS Mapper User's Manual – 12
+Layer List
+The Layers window provides a list of the layers available for display and is organized with a tree 
+structure based on the HEC-RAS data structure and the supporting data layers needed for model 
+evaluation – there are groups for "Features", “Geometries”, “Results”, “Map Layers”, and 
+“Terrain”. 
+To interact with a layer, the layer must be Selected.  The selected layer is shown in the Layers list with 
+the Selection Color.  The default selection color is magenta.  In order to interact with any layer, it 
+must be the Selected Layer.
+To change the display order of a layer, right-click on a layer and choose from the Move Layer menu 
+item options. (Note: layers may not be moved between groups in the layer list.)  Additional options 
+available for each layer through the right click are summarized in the table below.
+Option Description
+Layer Properties Provides access to the visualization properties, feature table, and source files.  
+Double click on the layer opens the Layer Properties.
+Open Feature Table Provides access to the underlying feature table.
+Zoom to Layer Zooms the Display Window to the extents of the selected layer.
+Remove Layer Remove a layer from the Layers Window.
+Move Layer Used to reorder the layer list and by moving the layer: To the Top, Up one Level, 
+Down one Level, or To the Bottom of the layer list.
+Export Layer Allows the user to export a vector data to Shapefile format for viewing in an 
+alternative GIS.
+Open Folder in Windows 
+Explorer
+Opens Windows Explorer to location of current layer.
+Other Other options are available specific to the layer.
+Interactive tools are available for the active layer.  The layer becomes active when selected by 
+clicking on it in the layer list.  The text for the active layer will be drawn in the selection color 
+(magenta).  This active layer will be use for selecting features in the Display Window using the Select 
+tool, animation profile information (if available), and reporting information based on the mouse 
+position.
+Layer Properties
+The Layer Properties option provides access to display properties and information about the layer.  
+Vector data and raster data both access the same properties dialog; however, the options available 
+depend on the data type.  Vector data will allow for the changing of point, line, and fill symbology.  
+Raster data allow for the changing of the surface fill, contour, and hill shade properties.  Depending 
+The Selected Layer will be displayed in the Selection Color.
+
+--- Page 12 ---
+Overview
+HEC-RAS Mapper User's Manual – 13
+on the layer type, the Layer Properties dialog will also provide access to information about the layer 
+features and source file information.  An example Layer Properties dialog is shown below.
+ Layer Properties window.
+Plot options specific to the layer shown will be will be shown in the "Additional Options" portion of 
+the Layer Properties dialog.
+Vector Data
+Vector data are symbolized by points, lines, and/or fill colors which have access to their own editors.  
+Depending on the type of layer selected, different options are available.
+Options for vector data also allow for labeling of each feature when the "Label Features" option is 
+checked.  This will draw to the Map Window a label based on the field selected by the user.  To select 
+the labeling field and placement, click the Edit button.  The Label Properties dialog, shown below, 
+allows the user to choose the attribute, location, and presentation (font) for the label text.  Fields in 
+the attribute table are available to be selected.  For lines, the Label Location defines where to place 
+the label based on the start or end of the line.
+
+
+--- Page 13 ---
+Overview
+HEC-RAS Mapper User's Manual – 14
+Raster Data
+Options available for displaying surface data will be enabled for raster data.  A legend for the surface 
+fill color properties is created with corresponding layer values.  The surface fill can be plotted as 
+either a “Stretched” (interpolated) color ramp or as “Discrete” (banded) color values.
+Contours and hillshade options allow for more detailed visualization of raster data.  Contours are 
+generated dynamically based on the interpolation of the raster data.  Using the Hillshade option 
+allows for shadowing of elevation data based on the angle of a light source, and can give the dataset 
+
+
+--- Page 14 ---
+Overview
+HEC-RAS Mapper User's Manual – 15
+a "3D" feel to the data.  It also allows for the vertical exaggeration of the data to provide more 
+pronounced relief.
+To change the surface fill properties, select the “Edit” button.  The surface fill properties dialog 
+(shown below) allows the user to select from predefined color ramps.  The predefined color ramps 
+have a predefined range of values over which to apply colors (Depth, Velocity, Arrival Time ...).  Other 
+color ramps do not have a predefined values associated with a color (Terrain, Water Surface 
+Elevation, …) as they are expected to be applied to layers that have a wide range of possible values.  
+For these layers, the color ramps are applied to layer based on the minimum and maximum values in 
+the dataset. 
+ Surface fill properties dialog.
+The colors and values in the Surface Symbol table can be changed by the user to create a new 
+surface fill.  To create a surface fill, enter the Max and Min values for the data and number of colors to 
+interpolate over and press the Create Ramp Values button.  Functionality to reverse the color ramp 
+and to save the color ramp to the color list are available.
+
+

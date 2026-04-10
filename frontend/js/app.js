@@ -2,12 +2,14 @@ const map = L.map('map', { zoomControl: false }).setView([37.55, 126.97], 12);
 L.control.zoom({ position: 'bottomright' }).addTo(map);
 
 const baseMapLayers = {
-    osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap contributors' }),
+    vworld: L.tileLayer('https://xdworld.vworld.kr/2d/Base/service/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© Vworld', className: 'vworld-2d-filter' }),
+    vworld_sat: L.tileLayer('https://xdworld.vworld.kr/2d/Satellite/service/{z}/{x}/{y}.jpeg', { maxZoom: 19, attribution: '© Vworld', className: 'vworld-sat-filter' }),
+    topo: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Tiles &copy; Esri' }),
     cartodark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19, attribution: '© OpenStreetMap contributors, © CARTO' }),
-    satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Tiles &copy; Esri' })
+    osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap contributors' })
 };
 
-let currentBaseLayer = baseMapLayers.cartodark;
+let currentBaseLayer = baseMapLayers.vworld;
 currentBaseLayer.addTo(map);
 
 window.changeBaseMap = function(mapType) {
@@ -39,6 +41,12 @@ map.on('click', function(e) {
     currentLat = lat;
     currentLng = lng;
     
+    // 검색 시 생성된 빨간 박스 제거
+    if (searchBoundingBox) {
+        map.removeLayer(searchBoundingBox);
+        searchBoundingBox = null;
+    }
+
     investigationMarker.setLatLng([lat, lng]);
     investigationMarker.setPopupContent(`<b>지점 선택됨</b><br>위도: ${lat.toFixed(4)}<br>경도: ${lng.toFixed(4)}<br><div style="font-size:0.75rem;color:#10b981;margin-top:4px;">상단 [데이터 갱신]을 클릭하세요</div>`).openPopup();
     
@@ -97,25 +105,122 @@ function simulateRunoff() {
 }
 
 let searchBoundingBox;
+window.currentSearchResults = [];
+
+window.selectLocationResult = function(index) {
+    const loc = window.currentSearchResults[index];
+    const bounds = [
+        [parseFloat(loc.boundingbox[0]), parseFloat(loc.boundingbox[2])],
+        [parseFloat(loc.boundingbox[1]), parseFloat(loc.boundingbox[3])]
+    ];
+
+    if (searchBoundingBox) map.removeLayer(searchBoundingBox);
+    searchBoundingBox = L.rectangle(bounds, { color: "#ef4444", weight: 3, fillOpacity: 0.1 }).addTo(map);
+
+    map.flyToBounds(bounds, { padding: [50, 50], duration: 1.5 });
+    
+    // 주소명 포맷 (너무 길 경우 첫 부분만 추출)
+    let shortName = loc.display_name.split(',')[0];
+    document.getElementById('currentLocText').innerText = shortName;
+    document.getElementById('searchResultsDropdown').style.display = 'none';
+};
+
+// 화면 이외 공간 클릭 시 드롭다운 닫기
+document.addEventListener('click', function(event) {
+    const dropdown = document.getElementById('searchResultsDropdown');
+    if (dropdown && !dropdown.contains(event.target) && event.target.id !== 'addressSearch' && !event.target.closest('button[onclick="searchLocation()"]')) {
+        dropdown.style.display = 'none';
+    }
+});
+
+// 주소 검색 히스토리 관리
+window.showSearchHistory = function() {
+    const dropdown = document.getElementById('searchResultsDropdown');
+    const input = document.getElementById('addressSearch');
+    const history = JSON.parse(localStorage.getItem('searchHistory') || '[]');
+    
+    // 주소입력창에 텍스트가 있으면 히스토리 대신 검색결과를 기다릴 수 있도록 함 (클릭 시에만)
+    if (input.value.trim() !== '') return;
+
+    if (history.length > 0) {
+        let hHtml = '<div style="padding: 10px 12px; background: rgba(59,130,246,0.1); border-bottom: 1px solid rgba(59,130,246,0.3); color:#60a5fa; font-size:0.8rem; font-weight:600; display:flex; justify-content:space-between; align-items:center;">';
+        hHtml += '<span>최근 검색 기록</span><span onclick="clearHistory()" style="cursor:pointer; font-size:0.7rem; color:#94a3b8; text-decoration:underline;">전체 삭제</span></div>';
+        
+        history.forEach((q, idx) => {
+            hHtml += `<div style="padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; color: #e2e8f0; font-size: 0.85rem; display:flex; align-items:center; justify-content:space-between;" 
+                onclick="useHistoryItem('${q}')" onmouseover="this.style.background='rgba(59,130,246,0.2)'" onmouseout="this.style.background='transparent'">
+                <div style="display:flex; align-items:center; flex-grow:1;">
+                    <i class="ri-history-line" style="color: #94a3b8; margin-right: 10px; font-size:0.9rem;"></i> ${q}
+                </div>
+            </div>`;
+        });
+        dropdown.innerHTML = hHtml;
+        dropdown.style.display = 'flex';
+    }
+};
+
+window.saveSearchQuery = function(query) {
+    if (!query) return;
+    let history = JSON.parse(localStorage.getItem('searchHistory') || '[]');
+    // 중복 제거 및 최상단 이동
+    history = history.filter(item => item !== query);
+    history.unshift(query);
+    // 10개 제한
+    history = history.slice(0, 10);
+    localStorage.setItem('searchHistory', JSON.stringify(history));
+};
+
+window.clearHistory = function() {
+    localStorage.removeItem('searchHistory');
+    document.getElementById('searchResultsDropdown').style.display = 'none';
+};
+
+window.useHistoryItem = function(query) {
+    document.getElementById('addressSearch').value = query;
+    searchLocation();
+};
+
 async function searchLocation() {
     const query = document.getElementById('addressSearch').value;
+    const dropdown = document.getElementById('searchResultsDropdown');
+    if (dropdown) dropdown.style.display = 'none';
     if (!query) return;
+    
+    // 검색어 저장
+    saveSearchQuery(query);
+    
     document.getElementById('currentLocText').innerText = '검색 중...';
     try {
-        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
+        // 주소 검색 (한국어로 된 상세 주소도 찾도록 lang 옵션 추가)
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&accept-language=ko`);
         const data = await response.json();
+        
         if (data && data.length > 0) {
-            const loc = data[0];
-            const bounds = [
-                [parseFloat(loc.boundingbox[0]), parseFloat(loc.boundingbox[2])],
-                [parseFloat(loc.boundingbox[1]), parseFloat(loc.boundingbox[3])]
-            ];
-
-            if (searchBoundingBox) map.removeLayer(searchBoundingBox);
-            searchBoundingBox = L.rectangle(bounds, { color: "#ef4444", weight: 3, fillOpacity: 0.1 }).addTo(map);
-
-            map.flyToBounds(bounds, { padding: [50, 50], duration: 1.5 });
-            document.getElementById('currentLocText').innerText = query;
+            window.currentSearchResults = data;
+            
+            if (data.length === 1) {
+                // 단일 결과면 자동 선택
+                selectLocationResult(0);
+            } else {
+                // 다중 검색(동명이인)일 경우 UI에 드롭다운 표출
+                if (dropdown) {
+                    let listHtml = '<div style="padding: 10px 12px; background: rgba(59,130,246,0.1); border-bottom: 1px solid rgba(59,130,246,0.3); color:#60a5fa; font-size:0.8rem; font-weight:600;">여러 위치가 발견되었습니다. 정확한 위치를 선택하세요.</div>';
+                    data.forEach((loc, index) => {
+                        let shortName = loc.display_name.split(',')[0];
+                        listHtml += `<div style="padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); cursor: pointer; color: #e2e8f0; font-size: 0.85rem; transition: 0.2s;" 
+                            onclick="selectLocationResult(${index})" onmouseover="this.style.background='rgba(59,130,246,0.2)'" onmouseout="this.style.background='transparent'">
+                            <div style="display:flex; align-items:center;">
+                                <i class="ri-map-pin-line" style="color: #60a5fa; margin-right: 6px;"></i> <b style="font-size: 0.95rem;">${shortName}</b>
+                            </div>
+                            <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 4px; line-height: 1.3;">${loc.display_name}</div>
+                            <div style="font-size: 0.7rem; color: #64748b; margin-top: 4px;">Lat: ${parseFloat(loc.lat).toFixed(3)}, Lng: ${parseFloat(loc.lon).toFixed(3)}</div>
+                        </div>`;
+                    });
+                    dropdown.innerHTML = listHtml;
+                    dropdown.style.display = 'flex';
+                }
+                document.getElementById('currentLocText').innerText = `검색결과: ${data.length}건 (목록서 선택)`;
+            }
         } else {
             alert('입력하신 주소/지역의 위치를 찾을 수 없습니다.');
             document.getElementById('currentLocText').innerText = '검색 결과 없음';
@@ -206,17 +311,38 @@ function calculatePredictedRainfall(lat, lng, hourOffset) {
 }
 
 async function updatePointData(lat, lng) {
+    if (!lat || !lng) {
+        alert("지도를 클릭하여 정확한 지점을 먼저 선택해주세요.");
+        return;
+    }
     const tbody = document.getElementById('precipTableBody');
     tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 20px;">외부 기상 API(다중 모델) 수신 중...</td></tr>';
     
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code,precipitation&hourly=precipitation,precipitation_probability&models=best_match,ecmwf_ifs025,gfs_seamless,jma_seamless&timezone=Asia%2FSeoul&past_days=1&forecast_days=4`;
     
     try {
-        const response = await fetch(url);
-        const data = await response.json();
-        
-        if (data.error) {
-            throw new Error(data.reason || "Weather API Error");
+        let data;
+        try {
+            const response = await fetch(url);
+            data = await response.json();
+            if (data.error) throw new Error(data.reason || "Weather API Error");
+            // API 통신 성공 시, 가장 최신 데이터 로컬 스토리지에 캐싱 보관
+            localStorage.setItem('cachedWeatherFallback', JSON.stringify({data: data}));
+        } catch(netErr) {
+            console.error("Network/API Limit Error:", netErr);
+            // 네트워크 연결 실패, 한도 초과(429), 502 에러 등의 경우 캐시된 데이터 활용
+            const cachedStr = localStorage.getItem('cachedWeatherFallback');
+            if (cachedStr) {
+                data = JSON.parse(cachedStr).data;
+                console.warn("오프라인 모드 발동: 로컬에 캐시된 이전 성공 데이터를 바탕으로 화면을 렌더링합니다.");
+                
+                const locText = document.getElementById('currentLocText');
+                if(locText && !locText.innerHTML.includes('오프라인')) {
+                    locText.innerHTML += ' <span style="color:#f59e0b; font-size:0.75rem; border:1px solid #f59e0b; padding:2px 6px; border-radius:4px; margin-left:8px; background:rgba(245,158,11,0.1);"><i class="ri-wifi-off-line"></i> 오프라인 (캐시모양)</span>';
+                }
+            } else {
+                throw netErr;
+            }
         }
 
         // --- 실시간 현재 기상 데이터 업데이트 ---
@@ -293,7 +419,7 @@ async function updatePointData(lat, lng) {
         if (e.message && e.message.includes("limit exceeded")) {
             errMsg = "오픈소스 기상 API(Open-Meteo) 일일 요청 한도가 초과되었습니다. (내일 초기화됨)";
         }
-        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#f43f5e; padding: 20px;">${errMsg}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#f43f5e; padding: 20px;">${errMsg}<br><small style="color:#94a3b8; font-size:0.75rem;">(서버 502 상태 불량 또는 네트워크 차단)</small></td></tr>`;
     }
 }
 
@@ -336,8 +462,8 @@ function renderWeatherUI() {
         labels.push(`${dateStr} ${timeStr}`);
         uniqueDates.add(dateStr);
         
-        let bestRain = data.hourly.precipitation_best_match ? (data.hourly.precipitation_best_match[i] || 0) : 0;
-        let bestProb = data.hourly.precipitation_probability_best_match ? (data.hourly.precipitation_probability_best_match[i] || 0) : 0;
+        let bestRain = data.hourly.precipitation_best_match ? (data.hourly.precipitation_best_match[i] || 0) : (data.hourly.precipitation ? data.hourly.precipitation[i] : 0);
+        let bestProb = data.hourly.precipitation_probability_best_match ? (data.hourly.precipitation_probability_best_match[i] || 0) : (data.hourly.precipitation_probability ? data.hourly.precipitation_probability[i] : 0);
         let ecRain = data.hourly.precipitation_ecmwf_ifs025 ? (data.hourly.precipitation_ecmwf_ifs025[i] || 0) : 0;
         let ecProb = data.hourly.precipitation_probability_ecmwf_ifs025 ? (data.hourly.precipitation_probability_ecmwf_ifs025[i] || 0) : 0;
         let gfsRain = data.hourly.precipitation_gfs_seamless ? (data.hourly.precipitation_gfs_seamless[i] || 0) : 0;
@@ -579,64 +705,79 @@ function calculateWindowScore(allHourlyData, startOffset, endOffset, windowName)
     
     let totalRain = 0;
     let totalProb = 0;
+    let rainHoursCount = 0;
     
     windowData.forEach(d => {
         totalRain += d.rains.kma; 
-        totalProb += d.probs.kma;
+        if (d.probs.kma > 0) {
+            totalProb += d.probs.kma;
+            rainHoursCount++;
+        }
     });
     
-    let avgProb = totalProb / windowData.length;
+    let avgProb = rainHoursCount > 0 ? (totalProb / rainHoursCount) : 0;
     
-    let grade = "안전";
-    if (totalRain >= 30 || avgProb >= 85) grade = "위험";
-    else if (totalRain >= 20 || avgProb >= 70) grade = "경고";
-    else if (totalRain >= 10 || avgProb >= 50) grade = "주의";
+    let status = "미대응";
+    if (avgProb >= 80) status = "즉시 대응";
+    else if (avgProb >= 60) status = "대응 준비";
+    else if (avgProb >= 50) status = "예의 주시";
     
     return {
         name: windowName,
         totalRain: parseFloat(totalRain.toFixed(1)),
         avgProb: Math.round(avgProb),
-        grade: grade
+        status: status
     };
 }
 
 function calculateAllWindowScores(allHourlyData) {
-    return [
-        calculateWindowScore(allHourlyData, 0, 3, "1~3h"),
-        calculateWindowScore(allHourlyData, 3, 6, "3~6h"),
+    let windows = [
+        calculateWindowScore(allHourlyData, 0, 6, "1~6h"),
         calculateWindowScore(allHourlyData, 6, 12, "6~12h"),
         calculateWindowScore(allHourlyData, 12, 24, "12~24h"),
-        calculateWindowScore(allHourlyData, 24, 48, "24~48h"),
-        calculateWindowScore(allHourlyData, 48, 72, "48~72h")
+        calculateWindowScore(allHourlyData, 24, 72, "24~72h")
     ].filter(w => w !== null);
+
+    let runningTotal = 0;
+    windows.forEach(w => {
+        runningTotal += w.totalRain;
+        w.runningTotal = parseFloat(runningTotal.toFixed(1));
+        w.isConditionMet = runningTotal >= 25.0; // 25mm 조건
+    });
+
+    return windows;
 }
 
 function determineFinalDecision(windows) {
-    let w1_3 = windows.find(w => w.name === "1~3h");
-    let w3_6 = windows.find(w => w.name === "3~6h");
-    let w6_12 = windows.find(w => w.name === "6~12h");
-    let w12_24 = windows.find(w => w.name === "12~24h");
-    let w24_48 = windows.find(w => w.name === "24~48h");
-    let w48_72 = windows.find(w => w.name === "48~72h");
+    let w24_72 = windows.find(w => w.name === "24~72h");
+    let lastWindow = windows[windows.length - 1];
+    let totalCumulative = lastWindow ? lastWindow.runningTotal : 0;
+
+    if (!w24_72) return { status: "미대응", color: "#64748b", targetWindow: null, totalCumulative: totalCumulative, conditionMet: totalCumulative >= 25.0 };
     
-    if (w1_3 && (w1_3.grade === "위험" || w1_3.totalRain >= 30 || w1_3.avgProb >= 85)) return { status: "즉시 대응", color: "#ef4444", targetWindow: w1_3 };
-    if (w3_6 && (w3_6.grade === "위험" || w3_6.grade === "경고" || w3_6.totalRain >= 20 || w3_6.avgProb >= 70)) return { status: "대응 준비", color: "#f97316", targetWindow: w3_6 };
-    if (w6_12 && (w6_12.grade !== "안전" || w6_12.totalRain >= 10 || w6_12.avgProb >= 50)) return { status: "예의주시", color: "#eab308", targetWindow: w6_12 };
-    if (w12_24 && (w12_24.grade !== "안전" || w12_24.totalRain >= 10 || w12_24.avgProb >= 50)) return { status: "사전 계획", color: "#3b82f6", targetWindow: w12_24 };
+    let color = "#64748b";
+    if (w24_72.status === "즉시 대응") color = "#ef4444";
+    else if (w24_72.status === "대응 준비") color = "#f97316";
+    else if (w24_72.status === "예의 주시") color = "#eab308";
     
-    let longTermWin = (w24_48 && w24_48.grade !== "안전") ? w24_48 : ((w48_72 && w48_72.grade !== "안전") ? w48_72 : null);
-    if (longTermWin) return { status: "장기 검토", color: "#8b5cf6", targetWindow: longTermWin };
-    
-    return { status: "미대응", color: "#64748b", targetWindow: null };
+    return { status: w24_72.status, color: color, targetWindow: w24_72, totalCumulative: totalCumulative, conditionMet: totalCumulative >= 25.0 };
 }
 
 function generateDecisionReason(decisionObj) {
-    if (decisionObj.status === "미대응" || !decisionObj.targetWindow) {
-        return "모든 시간창에서 한국기상청(KMA) 예측 기준을 밑돌아 가장 안전한 <b>미대응</b> 상태로 진단되었습니다.";
-    }
     let tw = decisionObj.targetWindow;
-    let windowStr = tw.name.replace("h", "시간");
-    return `향후 <b>${windowStr}</b> 내 한국기상청 기준 예측강수량이 <b>${tw.totalRain}mm</b>, 강수확률이 <b>${tw.avgProb}%</b>로 <b>${tw.grade}</b> 수준이므로 <b>${decisionObj.status}</b> 조치가 요구됩니다.`;
+    if (!tw) {
+        return "기상 데이터가 부족하여 종합 판단 구간(24~72시간)을 분석할 수 없습니다.";
+    }
+    
+    let cumText = decisionObj.conditionMet 
+        ? `<div style="margin-top:8px; padding:6px; background:rgba(16,185,129,0.15); border:1px solid #10b981; border-radius:6px; color:#10b981; font-weight:700;"><i class="ri-check-double-line"></i> 총 누적 강수량 ${decisionObj.totalCumulative.toFixed(1)}mm (비점저감 25mm 조건 충족)</div>`
+        : `<div style="margin-top:8px; padding:6px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:6px; color:#94a3b8;"><i class="ri-information-line"></i> 총 누적 강수량 ${decisionObj.totalCumulative.toFixed(1)}mm (비점저감 25mm 조건 미달)</div>`;
+
+    if (decisionObj.status === "미대응") {
+        return `종합 판단 구간(<b>24~72시간</b>) 기준, 해당 구간 예상 강수량은 <b style="color:#60a5fa">${tw.totalRain}mm</b>, 강수 확률은 <b>${tw.avgProb}%</b>로 기준치(50%) 미만이므로 최종 <b>미대응</b> 상태입니다.${cumText}`;
+    }
+    
+    return `향후 결론 판단 구간(<b>24~72시간</b>) 내 예상 구간 강수량은 <b style="color:#ef4444">${tw.totalRain}mm</b>, 예측 강수확률 평균은 <b>${tw.avgProb}%</b>에 달하므로 최종 <b>${decisionObj.status}</b> 조치가 요구됩니다.${cumText}`;
 }
 
 function renderDecisionCard(windows, decisionObj) {
@@ -660,16 +801,26 @@ function renderDecisionCard(windows, decisionObj) {
         
         let gridHtml = '';
         windows.forEach(w => {
-            let gradeColor = w.grade === '위험' ? '#ef4444' : (w.grade === '경고' ? '#f97316' : (w.grade === '주의' ? '#eab308' : '#64748b'));
+            let gradeColor = w.status === '즉시 대응' ? '#ef4444' : (w.status === '대응 준비' ? '#f97316' : (w.status === '예의 주시' ? '#eab308' : '#64748b'));
+            let cumColor = w.isConditionMet ? '#10b981' : '#cbd5e1';
+            let cumBadge = w.isConditionMet ? `<span style="background:#10b981; color:#fff; padding:1px 4px; border-radius:4px; font-size:0.6rem; margin-left:4px;">25mm 도달</span>` : '';
+
             gridHtml += `
-                <div style="background: rgba(15,23,42,0.4); border: 1px solid rgba(255,255,255,0.05); padding: 10px; border-radius: 8px;">
-                    <div style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 6px;">${w.name.replace('h','시간')} 구간</div>
+                <div style="background: rgba(15,23,42,0.4); border: 1px solid ${gradeColor}60; border-left: 3px solid ${gradeColor}; padding: 10px; border-radius: 8px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
+                        <span style="font-size: 0.75rem; color: #94a3b8;">${w.name.replace('h','시간')} 구간</span>
+                        <span style="font-size: 0.75rem; font-weight: 700; color: ${gradeColor};">${w.status}</span>
+                    </div>
                     <div style="display: flex; flex-direction: column; gap: 4px;">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span style="font-size: 0.8rem; color: #cbd5e1;">예상 강수량</span>
+                            <span style="font-size: 0.8rem; color: #cbd5e1;">해당 구간 비</span>
                             <span style="font-size: 1.05rem; font-weight: 700;">${w.totalRain.toFixed(1)}<span style="font-size:0.75rem;font-weight:400;color:#94a3b8">mm</span></span>
                         </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 4px; margin-top: 2px;">
+                            <span style="font-size: 0.8rem; color: #cbd5e1;">시간 총 누적비 ${cumBadge}</span>
+                            <span style="font-size: 1.05rem; font-weight: 700; color:${cumColor};">${w.runningTotal.toFixed(1)}<span style="font-size:0.75rem;font-weight:400;color:#94a3b8">mm</span></span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(0,0,0,0.2); padding-top: 4px; margin-top: 2px;">
                             <span style="font-size: 0.8rem; color: #cbd5e1;">강수 확률</span>
                             <span style="font-size: 1.05rem; font-weight: 700; color: ${gradeColor};">${w.avgProb}<span style="font-size:0.75rem;font-weight:400;color:#94a3b8">%</span></span>
                         </div>
@@ -752,4 +903,24 @@ function toggleSection(contentId, iconId) {
             icon.classList.add('ri-arrow-down-s-line');
         }
     }
+}
+
+// 연관 필터링 사이트 검색 기능
+document.getElementById('siteSearchInput')?.addEventListener('input', function(e) {
+    const query = e.target.value.toLowerCase();
+    const links = document.querySelectorAll('.site-link');
+    links.forEach(link => {
+        const name = link.getAttribute('data-name').toLowerCase();
+        if (name.includes(query)) {
+            link.style.display = 'flex';
+        } else {
+            link.style.display = 'none';
+        }
+    });
+});
+
+// 검색 도움말 및 주소 검색 필드 보강
+const addrSearch = document.getElementById('addressSearch');
+if (addrSearch) {
+    addrSearch.placeholder = "장소, 주소 검색 (예: 한강대교, 성수동 등)";
 }
