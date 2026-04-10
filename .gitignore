@@ -1,0 +1,20 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.venv/
+env/
+venv/
+ENV/
+*.log
+.DS_Store
+*.swp
+*.bak
+.vscode/
+
+# Project Specific
+/비점오염_AI_예측프로젝트/03_AI모델_실험/*.model
+/비점오염_AI_예측프로젝트/03_AI모델_실험/*.h5
+/비점오염_AI_예측프로젝트/03_AI모델_실험/*.pkl
+
+*.zip
